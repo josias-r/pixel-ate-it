@@ -55,26 +55,9 @@ type SharedState = Arc<Mutex<AppState>>;
 async fn main() -> anyhow::Result<()> {
     let state = Arc::new(Mutex::new(AppState::new()));
 
-    // Generate or load certificate for WebTransport
-    let cert_path = std::env::var("TLS_CERT_PATH").unwrap_or_default();
-    let key_path = std::env::var("TLS_KEY_PATH").unwrap_or_default();
-
-    let identity = if !cert_path.is_empty() && !key_path.is_empty() {
-        println!("Loading TLS certificates from {} and {}", cert_path, key_path);
-        // Load the certificates from the provided paths
-        // We read the files directly. If they fail, we panic to make it clear.
-        let cert_chain = std::fs::read(&cert_path).expect("Failed to read TLS_CERT_PATH");
-        let private_key = std::fs::read(&key_path).expect("Failed to read TLS_KEY_PATH");
-        
-        let identity = Identity::load_pem(&cert_chain, &private_key)
-            .expect("Failed to parse PEM files into Identity");
-        
-        identity
-    } else {
-        println!("No TLS_CERT_PATH/TLS_KEY_PATH provided, using ephemeral self-signed cert.");
-        Identity::self_signed(["localhost", "127.0.0.1", "::1"]).unwrap()
-    };
-    
+    // Generate self-signed certificate for WebTransport
+    // We use serverCertificateHashes in the frontend so this is fully secure in prod
+    let identity = Identity::self_signed(["localhost", "127.0.0.1", "::1"]).unwrap();
     let cert = identity.certificate_chain().as_slice()[0].clone();
     let hash = cert.hash();
     
