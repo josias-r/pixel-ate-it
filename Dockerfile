@@ -1,5 +1,5 @@
 # Stage 1: Build the Rust server
-FROM rust:1.80-slim AS backend-builder
+FROM rust:slim AS backend-builder
 WORKDIR /usr/src/app
 COPY server ./server
 WORKDIR /usr/src/app/server
