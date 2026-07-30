@@ -23,11 +23,28 @@ export function updateOtherPixelTarget(
 }
 
 export function initInput() {
-  window.addEventListener("keydown", (e) => {
-    // Main player controls
+  function handleMoveAction(moveDx: number, moveDy: number) {
     if (gameState.state !== "IDLE") return;
 
-    let moved = false;
+    if (moveDx > 0) {
+      gameState.targetOffsetX = 1;
+      sendMove("right", 1, 0);
+    } else if (moveDx < 0) {
+      gameState.targetOffsetX = -1;
+      sendMove("left", -1, 0);
+    } else if (moveDy > 0) {
+      gameState.targetOffsetY = 1;
+      sendMove("down", 0, 1);
+    } else if (moveDy < 0) {
+      gameState.targetOffsetY = -1;
+      sendMove("up", 0, -1);
+    }
+
+    gameState.state = ANIMATING_PIXEL;
+    gameState.animationTimer = 0;
+  }
+
+  window.addEventListener("keydown", (e) => {
     let dx = 0;
     let dy = 0;
 
@@ -37,32 +54,7 @@ export function initInput() {
     else if (e.key === "ArrowRight") dx = 1;
 
     if (dx !== 0 || dy !== 0) {
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 0) {
-          gameState.targetOffsetX = 1;
-          moved = true;
-          sendMove("right", 1, 0);
-        } else if (dx < 0) {
-          gameState.targetOffsetX = -1;
-          moved = true;
-          sendMove("left", -1, 0);
-        }
-      } else if (Math.abs(dy) > Math.abs(dx)) {
-        if (dy > 0) {
-          gameState.targetOffsetY = 1;
-          moved = true;
-          sendMove("down", 0, 1);
-        } else if (dy < 0) {
-          gameState.targetOffsetY = -1;
-          moved = true;
-          sendMove("up", 0, -1);
-        }
-      }
-    }
-
-    if (moved) {
-      gameState.state = ANIMATING_PIXEL;
-      gameState.animationTimer = 0;
+      handleMoveAction(dx, dy);
     }
   });
 
@@ -76,7 +68,16 @@ export function initInput() {
       touchStartX = e.changedTouches[0].screenX;
       touchStartY = e.changedTouches[0].screenY;
     },
-    { passive: true },
+    { passive: false },
+  );
+
+  window.addEventListener(
+    "touchmove",
+    (e) => {
+      // Prevent browser from scrolling the page when trying to swipe
+      e.preventDefault();
+    },
+    { passive: false },
   );
 
   window.addEventListener("touchend", (e) => {
@@ -94,33 +95,10 @@ export function initInput() {
       return;
     }
 
-    let moved = false;
-
     if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 0) {
-        gameState.targetOffsetX = 1;
-        moved = true;
-        sendMove("right", 1, 0);
-      } else {
-        gameState.targetOffsetX = -1;
-        moved = true;
-        sendMove("left", -1, 0);
-      }
+      handleMoveAction(dx > 0 ? 1 : -1, 0);
     } else {
-      if (dy > 0) {
-        gameState.targetOffsetY = 1;
-        moved = true;
-        sendMove("down", 0, 1);
-      } else {
-        gameState.targetOffsetY = -1;
-        moved = true;
-        sendMove("up", 0, -1);
-      }
-    }
-
-    if (moved) {
-      gameState.state = ANIMATING_PIXEL;
-      gameState.animationTimer = 0;
+      handleMoveAction(0, dy > 0 ? 1 : -1);
     }
   });
 }

@@ -1,6 +1,11 @@
 import { ctx, canvas } from "./canvas";
 import { gameState } from "./state";
-import { RASTER_SIZE, PIXEL_SIZE } from "./constants";
+import {
+  RASTER_SIZE,
+  PIXEL_SIZE,
+  PLAYER_PIXEL_COLOR,
+  OTHER_PIXEL_COLOR,
+} from "./constants";
 
 export function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -43,7 +48,7 @@ export function draw() {
     const pScreenX = p.animOffsetX * PIXEL_SIZE - screenWorldLeft;
     const pScreenY = p.animOffsetY * PIXEL_SIZE - screenWorldTop;
 
-    ctx.fillStyle = "red";
+    ctx.fillStyle = OTHER_PIXEL_COLOR;
     ctx.fillRect(
       pScreenX - PIXEL_SIZE / 2,
       pScreenY - PIXEL_SIZE / 2,
@@ -56,7 +61,7 @@ export function draw() {
   const pixelScreenX = gameState.animPixelX - screenWorldLeft;
   const pixelScreenY = gameState.animPixelY - screenWorldTop;
 
-  ctx.fillStyle = "white";
+  ctx.fillStyle = PLAYER_PIXEL_COLOR;
   ctx.fillRect(
     pixelScreenX - PIXEL_SIZE / 2,
     pixelScreenY - PIXEL_SIZE / 2,

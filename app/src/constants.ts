@@ -1,5 +1,8 @@
-export const PIXEL_SIZE = 50;
+export const PIXEL_SIZE = 10;
 export const RASTER_SIZE = PIXEL_SIZE * 0.5;
+
+export const PLAYER_PIXEL_COLOR = "white";
+export const OTHER_PIXEL_COLOR = "lightgray";
 
 export const PLAYER_ANIM_DURATION = 250;
 export const CAMERA_ANIM_DURATION = 150;
