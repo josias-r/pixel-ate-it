@@ -70,13 +70,14 @@ async fn main() -> anyhow::Result<()> {
         println!("Warning: Could not write cert_hash.ts to frontend: {}", e);
     }
 
+    let port: u16 = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string()).parse().unwrap_or(3000);
     let config = ServerConfig::builder()
-        .with_bind_default(3000)
+        .with_bind_default(port)
         .with_identity(identity)
         .build();
 
     let endpoint = Endpoint::server(config)?;
-    println!("WebTransport server listening on port 3000");
+    println!("WebTransport server listening on port {}", port);
 
     loop {
         let incoming_session = endpoint.accept().await;
