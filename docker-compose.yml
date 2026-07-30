@@ -1,14 +1,15 @@
 services:
   pixel-ate-it:
-    image: ghcr.io/josias-r/pixel-ate-it:v0.0.1
+    image: ghcr.io/josias-r/pixel-ate-it:v0.0.18
     container_name: pixel-ate-it
     restart: unless-stopped
     ports:
-      # Expose Nginx serving the static frontend
-      - "8080:80"
+    #   # Expose Nginx serving the static frontend - not needed if using reverse proxy
+    #   - "8080:80"
       
-      # Expose the Rust WebTransport server (UDP is required)
-      - "3000:3000/udp"
+      # Expose the Rust WebTransport server (UDP is required)  - reverse proxy tricky, so port exposing instead due to certificates generated/used for WebTransport
+      - "3939:3000/udp"
     environment:
       # Ensure the Rust server port matches the exposed UDP port
       - PORT=3000
+      # - PUBLIC_URL=https://pixel-ate-it.example.com:3939
