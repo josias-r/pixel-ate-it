@@ -3,6 +3,8 @@ export const RASTER_SIZE = PIXEL_SIZE * 0.5;
 
 export const PLAYER_PIXEL_COLOR = "white";
 export const OTHER_PIXEL_COLOR = "lightgray";
+export const RASTER_COLOR = "#212121";
+export const RASTER_THICKNESS = 2;
 
 export const PLAYER_ANIM_DURATION = 250;
 export const CAMERA_ANIM_DURATION = 150;

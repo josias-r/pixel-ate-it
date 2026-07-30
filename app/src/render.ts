@@ -5,13 +5,15 @@ import {
   PIXEL_SIZE,
   PLAYER_PIXEL_COLOR,
   OTHER_PIXEL_COLOR,
+  RASTER_COLOR,
+  RASTER_THICKNESS,
 } from "./constants";
 
 export function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = "gray";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = RASTER_COLOR;
+  ctx.lineWidth = RASTER_THICKNESS;
 
   const screenWorldLeft = gameState.animCameraX - window.innerWidth / 2;
   const screenWorldTop = gameState.animCameraY - window.innerHeight / 2;
