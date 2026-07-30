@@ -8,24 +8,21 @@ export async function initNetwork() {
   try {
     let options = {};
 
-    // The serverCertificateHashes API is ONLY needed for local development with self-signed certs.
-    // In production, your server will use a real SSL cert (like Let's Encrypt),
-    // and the browser will automatically trust it via standard Web PKI.
-    if (import.meta.env.DEV) {
-      // Convert the hex string into a Uint8Array (required by the Web API)
-      const hashBytes = new Uint8Array(
-        hexHash.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
-      );
+    // In production, because WebTransport (UDP) is hard to reverse proxy through Traefik,
+    // we use the serverCertificateHashes feature to securely connect directly to the Rust backend
+    // using its self-signed certificate. The hash is dynamically injected at runtime by Docker.
+    const hashBytes = new Uint8Array(
+      hexHash.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
+    );
 
-      options = {
-        serverCertificateHashes: [
-          {
-            algorithm: "sha-256",
-            value: hashBytes,
-          },
-        ],
-      };
-    }
+    options = {
+      serverCertificateHashes: [
+        {
+          algorithm: "sha-256",
+          value: hashBytes,
+        },
+      ],
+    };
 
     transport = new WebTransport(
       import.meta.env.DEV
