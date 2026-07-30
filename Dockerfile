@@ -1,5 +1,5 @@
 # Stage 1: Prepare recipe with cargo-chef
-FROM lukemathwalker/cargo-chef:latest-rust-1.80 AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.97.1-slim AS chef
 WORKDIR /usr/src/app/server
 
 FROM chef AS planner
