@@ -1,10 +1,12 @@
 import "./style.css";
 import "./canvas";
 import { initInput } from "./input";
+import { initNetwork } from "./network";
 import { update } from "./update";
 import { draw } from "./render";
 
 initInput();
+initNetwork();
 
 let lastTime = 0;
 function loop(time: number) {

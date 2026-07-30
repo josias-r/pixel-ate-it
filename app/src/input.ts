@@ -1,5 +1,6 @@
 import { gameState } from "./state";
 import { ANIMATING_PIXEL } from "./constants";
+import { sendMove } from "./network";
 
 export function updateOtherPixelTarget(
   id: string,
@@ -16,19 +17,6 @@ export function updateOtherPixelTarget(
 
 export function initInput() {
   window.addEventListener("keydown", (e) => {
-    // Other pixel controls (temporary dev)
-    const p2 = gameState.otherPixels["dev-player2"];
-    if (p2 && p2.state === "IDLE") {
-      if (e.key === "w")
-        updateOtherPixelTarget("dev-player2", p2.offsetX, p2.offsetY - 1);
-      else if (e.key === "s")
-        updateOtherPixelTarget("dev-player2", p2.offsetX, p2.offsetY + 1);
-      else if (e.key === "a")
-        updateOtherPixelTarget("dev-player2", p2.offsetX - 1, p2.offsetY);
-      else if (e.key === "d")
-        updateOtherPixelTarget("dev-player2", p2.offsetX + 1, p2.offsetY);
-    }
-
     // Main player controls
     if (gameState.state !== "IDLE") return;
 
@@ -36,15 +24,19 @@ export function initInput() {
     if (e.key === "ArrowUp") {
       gameState.targetOffsetY = -1;
       moved = true;
+      sendMove("up");
     } else if (e.key === "ArrowDown") {
       gameState.targetOffsetY = 1;
       moved = true;
+      sendMove("down");
     } else if (e.key === "ArrowLeft") {
       gameState.targetOffsetX = -1;
       moved = true;
+      sendMove("left");
     } else if (e.key === "ArrowRight") {
       gameState.targetOffsetX = 1;
       moved = true;
+      sendMove("right");
     }
 
     if (moved) {
