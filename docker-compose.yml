@@ -1,0 +1,14 @@
+services:
+  pixel-ate-it:
+    image: ghcr.io/josias-r/pixel-ate-it:v0.0.1
+    container_name: pixel-ate-it
+    restart: unless-stopped
+    ports:
+      # Expose Nginx serving the static frontend
+      - "8080:80"
+      
+      # Expose the Rust WebTransport server (UDP is required)
+      - "3000:3000/udp"
+    environment:
+      # Ensure the Rust server port matches the exposed UDP port
+      - PORT=3000

@@ -1,12 +1,12 @@
 # Stage 1: Build the Rust server
-FROM rust:1.80-slim as backend-builder
+FROM rust:1.80-slim AS backend-builder
 WORKDIR /usr/src/app
 COPY server ./server
 WORKDIR /usr/src/app/server
 RUN cargo build --release
 
 # Stage 2: Build the frontend
-FROM node:20 as frontend-builder
+FROM node:20 AS frontend-builder
 WORKDIR /usr/src/app
 RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -17,7 +17,7 @@ WORKDIR /usr/src/app/app
 RUN pnpm run build
 
 # Stage 3: Final image
-FROM nginx:bookworm-slim
+FROM nginx:bookworm
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy frontend build
