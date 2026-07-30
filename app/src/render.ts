@@ -38,6 +38,21 @@ export function draw() {
     ctx.stroke();
   }
 
+  // Draw other pixels
+  Object.values(gameState.otherPixels).forEach((p) => {
+    const pScreenX = p.animOffsetX * PIXEL_SIZE - screenWorldLeft;
+    const pScreenY = p.animOffsetY * PIXEL_SIZE - screenWorldTop;
+
+    ctx.fillStyle = "red";
+    ctx.fillRect(
+      pScreenX - PIXEL_SIZE / 2,
+      pScreenY - PIXEL_SIZE / 2,
+      PIXEL_SIZE,
+      PIXEL_SIZE,
+    );
+  });
+
+  // Draw main player pixel
   const pixelScreenX = gameState.animPixelX - screenWorldLeft;
   const pixelScreenY = gameState.animPixelY - screenWorldTop;
 

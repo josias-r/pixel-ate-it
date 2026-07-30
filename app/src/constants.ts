@@ -1,6 +1,9 @@
 export const PIXEL_SIZE = 50;
 export const RASTER_SIZE = PIXEL_SIZE * 0.5;
-export const ANIMATION_DURATION = 300;
+
+export const PLAYER_ANIM_DURATION = 250;
+export const CAMERA_ANIM_DURATION = 150;
+export const OTHER_PIXEL_ANIM_DURATION = 400;
 
 export const ANIMATING_CAMERA = "ANIMATING_CAMERA";
 export const ANIMATING_PIXEL = "ANIMATING_PIXEL";
