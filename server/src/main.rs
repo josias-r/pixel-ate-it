@@ -65,10 +65,15 @@ async fn main() -> anyhow::Result<()> {
     let hash_hex: String = hash.as_ref().iter().map(|b| format!("{:02x}", b)).collect();
     println!("Server cert hash: {}", hash_hex);
 
-    // Write the hash directly to a file that the frontend can import!
-    let ts_content = format!("export const hexHash = \"{}\";\n", hash_hex);
-    if let Err(e) = std::fs::write("../app/src/cert_hash.ts", ts_content) {
-        println!("Warning: Could not write cert_hash.ts to frontend: {}", e);
+    // Write the hash directly to a file that the frontend can import (or a txt file for Docker)
+    let hash_path = std::env::var("CERT_HASH_PATH").unwrap_or_else(|_| "../app/src/cert_hash.ts".to_string());
+    let content = if hash_path.ends_with(".ts") {
+        format!("export const hexHash = \"{}\";\n", hash_hex)
+    } else {
+        hash_hex.clone()
+    };
+    if let Err(e) = std::fs::write(&hash_path, content) {
+        println!("Warning: Could not write cert_hash to {}: {}", hash_path, e);
     }
 
     let port: u16 = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string()).parse().unwrap_or(3000);
