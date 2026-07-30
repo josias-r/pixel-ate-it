@@ -14,6 +14,8 @@ COPY app/package.json ./app/
 RUN pnpm install --frozen-lockfile
 COPY app ./app
 WORKDIR /usr/src/app/app
+# Create a dummy cert_hash.ts since it's gitignored but imported by network.ts
+RUN echo 'export const hexHash = "";' > src/cert_hash.ts
 RUN pnpm run build
 
 # Stage 3: Final image
