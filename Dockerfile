@@ -1,8 +1,21 @@
 # Stage 1: Build the Rust server
 FROM rust:slim AS backend-builder
 WORKDIR /usr/src/app
-COPY server ./server
+
+# Create a dummy project to cache dependencies
+RUN cargo new server
 WORKDIR /usr/src/app/server
+COPY server/Cargo.toml server/Cargo.lock ./
+# Build dependencies (this layer will be cached unless Cargo.toml/lock changes)
+RUN cargo build --release
+# Remove the dummy source
+RUN rm src/*.rs
+
+# Copy actual source code
+COPY server/src ./src
+# Touch main.rs to ensure Cargo knows it needs recompiling
+RUN touch src/main.rs
+# Build the actual application
 RUN cargo build --release
 
 # Stage 2: Build the frontend
