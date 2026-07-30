@@ -7,24 +7,22 @@ export function initInput() {
 
     let moved = false;
     if (e.key === "ArrowUp") {
-      gameState.pixelY -= PIXEL_SIZE;
+      gameState.targetOffsetY = -PIXEL_SIZE;
       moved = true;
     } else if (e.key === "ArrowDown") {
-      gameState.pixelY += PIXEL_SIZE;
+      gameState.targetOffsetY = PIXEL_SIZE;
       moved = true;
     } else if (e.key === "ArrowLeft") {
-      gameState.pixelX -= PIXEL_SIZE;
+      gameState.targetOffsetX = -PIXEL_SIZE;
       moved = true;
     } else if (e.key === "ArrowRight") {
-      gameState.pixelX += PIXEL_SIZE;
+      gameState.targetOffsetX = PIXEL_SIZE;
       moved = true;
     }
 
     if (moved) {
       gameState.state = ANIMATING_PIXEL;
       gameState.animationTimer = 0;
-      gameState.startAnimPixelX = gameState.animPixelX;
-      gameState.startAnimPixelY = gameState.animPixelY;
     }
   });
 }

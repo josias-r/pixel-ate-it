@@ -16,39 +16,32 @@ export function update(dt: number) {
     const progress = Math.min(1, gameState.animationTimer / ANIMATION_DURATION);
     const ease = easeInOutQuad(progress);
 
-    gameState.animPixelX =
-      gameState.startAnimPixelX +
-      (gameState.pixelX - gameState.startAnimPixelX) * ease;
-    gameState.animPixelY =
-      gameState.startAnimPixelY +
-      (gameState.pixelY - gameState.startAnimPixelY) * ease;
+    gameState.animPixelX = gameState.targetOffsetX * ease;
+    gameState.animPixelY = gameState.targetOffsetY * ease;
 
     if (progress >= 1) {
-      gameState.animPixelX = gameState.pixelX;
-      gameState.animPixelY = gameState.pixelY;
+      gameState.animPixelX = gameState.targetOffsetX;
+      gameState.animPixelY = gameState.targetOffsetY;
 
       gameState.state = ANIMATING_CAMERA;
       gameState.animationTimer = 0;
-      gameState.cameraX = gameState.pixelX;
-      gameState.cameraY = gameState.pixelY;
-      gameState.startAnimCameraX = gameState.animCameraX;
-      gameState.startAnimCameraY = gameState.animCameraY;
     }
   } else if (gameState.state === ANIMATING_CAMERA) {
     gameState.animationTimer += dt;
     const progress = Math.min(1, gameState.animationTimer / ANIMATION_DURATION);
     const ease = easeInOutQuad(progress);
 
-    gameState.animCameraX =
-      gameState.startAnimCameraX +
-      (gameState.cameraX - gameState.startAnimCameraX) * ease;
-    gameState.animCameraY =
-      gameState.startAnimCameraY +
-      (gameState.cameraY - gameState.startAnimCameraY) * ease;
+    gameState.animCameraX = gameState.targetOffsetX * ease;
+    gameState.animCameraY = gameState.targetOffsetY * ease;
 
     if (progress >= 1) {
-      gameState.animCameraX = gameState.cameraX;
-      gameState.animCameraY = gameState.cameraY;
+      // Re-center by resetting everything back to 0
+      gameState.animPixelX = 0;
+      gameState.animPixelY = 0;
+      gameState.animCameraX = 0;
+      gameState.animCameraY = 0;
+      gameState.targetOffsetX = 0;
+      gameState.targetOffsetY = 0;
       gameState.state = IDLE;
     }
   }
