@@ -132,8 +132,6 @@ function handleUpdate(
   }
 }
 
-let datagramWriter: WritableStreamDefaultWriter<Uint8Array> | null = null;
-
 export function sendMove(direction: string, dx: number, dy: number) {
   if (!transport) return;
   moveSeq++;
@@ -143,18 +141,21 @@ export function sendMove(direction: string, dx: number, dy: number) {
   const encoder = new TextEncoder();
   const data = encoder.encode(JSON.stringify({ moves: payload }));
 
-  if (!datagramWriter) {
-    try {
-      datagramWriter = transport.datagrams.writable.getWriter();
-    } catch (e) {
-      console.error("Failed to get writer:", e);
-      return;
-    }
-  }
-
-  datagramWriter.write(data).catch((e) => {
-    console.error("Failed to write datagram:", e);
-    // If writer is broken, we should clear it so we get a new one next time
-    datagramWriter = null;
-  });
+  // Use a reliable Unidirectional Stream to bypass Datagram drops/bugs on mobile WebKit
+  transport
+    .createUnidirectionalStream()
+    .then((stream) => {
+      const writer = stream.getWriter();
+      writer
+        .write(data)
+        .then(() => {
+          writer.close().catch(console.error);
+        })
+        .catch((e) => {
+          console.error("Failed to write stream:", e);
+        });
+    })
+    .catch((e) => {
+      console.error("Failed to create stream:", e);
+    });
 }

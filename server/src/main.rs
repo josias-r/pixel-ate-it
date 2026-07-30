@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
+use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 use wtransport::endpoint::Endpoint;
 use wtransport::tls::Identity;
@@ -153,46 +154,84 @@ async fn handle_session(connection: wtransport::Connection, state: SharedState) 
         }
     });
 
+    let connection_recv = connection.clone();
     let client_id_clone = client_id.clone();
     let state_clone = state.clone();
-    
-    let connection_recv = connection.clone();
+
     let mut recv_task = tokio::spawn(async move {
-        loop {
-            match connection_recv.receive_datagram().await {
-                Ok(datagram) => {
-                    let payload = datagram.payload();
-                    if let Ok(client_move) = serde_json::from_slice::<ClientMove>(payload.as_ref()) {
-                        let moved = {
-                            let mut st = state_clone.lock().await;
-                            if let Some(player) = st.players.get_mut(&client_id_clone) {
-                                let mut any_moved = false;
-                                for m in client_move.moves {
-                                    if m.seq > player.last_seq {
-                                        match m.direction.as_str() {
-                                            "up" => player.y -= 1,
-                                            "down" => player.y += 1,
-                                            "left" => player.x -= 1,
-                                            "right" => player.x += 1,
-                                            _ => {}
-                                        }
-                                        player.last_seq = m.seq;
-                                        any_moved = true;
+        let handle_payload = |payload: &[u8], st: &SharedState, cid: &str| -> core::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+            let payload_vec = payload.to_vec();
+            let st_clone = st.clone();
+            let cid_clone = cid.to_string();
+            Box::pin(async move {
+                if let Ok(client_move) = serde_json::from_slice::<ClientMove>(&payload_vec) {
+                    let moved = {
+                        let mut state_lock = st_clone.lock().await;
+                        if let Some(player) = state_lock.players.get_mut(&cid_clone) {
+                            let mut any_moved = false;
+                            for m in client_move.moves {
+                                if m.seq > player.last_seq {
+                                    match m.direction.as_str() {
+                                        "up" => player.y -= 1,
+                                        "down" => player.y += 1,
+                                        "left" => player.x -= 1,
+                                        "right" => player.x += 1,
+                                        _ => {}
                                     }
+                                    player.last_seq = m.seq;
+                                    any_moved = true;
                                 }
-                                any_moved
-                            } else {
-                                false
                             }
-                        };
-                        
-                        if moved {
-                            broadcast_update_except(&state_clone, &client_id_clone).await;
+                            any_moved
+                        } else {
+                            false
                         }
+                    };
+                    
+                    if moved {
+                        broadcast_update_except(&st_clone, &cid_clone).await;
                     }
+                } else {
+                    println!("Failed to parse ClientMove from payload: {:?}", std::str::from_utf8(&payload_vec));
                 }
-                Err(_) => break, // Connection closed or error
+            })
+        };
+
+        let datagram_fut = async {
+            loop {
+                match connection_recv.receive_datagram().await {
+                    Ok(datagram) => {
+                        handle_payload(datagram.payload().as_ref(), &state_clone, &client_id_clone).await;
+                    }
+                    Err(_) => break,
+                }
             }
+        };
+
+        let stream_fut = async {
+            loop {
+                match connection_recv.accept_uni().await {
+                    Ok(mut stream) => {
+                        let st_clone = state_clone.clone();
+                        let cid_clone = client_id_clone.clone();
+                        tokio::spawn(async move {
+                            let mut buf = Vec::new();
+                            let mut chunk = [0u8; 1024];
+                            // Wait, reading to end of stream
+                            while let Ok(Some(bytes_read)) = stream.read(&mut chunk).await {
+                                buf.extend_from_slice(&chunk[..bytes_read]);
+                            }
+                            handle_payload(&buf, &st_clone, &cid_clone).await;
+                        });
+                    }
+                    Err(_) => break,
+                }
+            }
+        };
+
+        tokio::select! {
+            _ = datagram_fut => {}
+            _ = stream_fut => {}
         }
     });
 
