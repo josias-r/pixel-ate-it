@@ -1,5 +1,5 @@
 use crate::models::{ClientMove, PlayerState};
-use crate::state::{broadcast_update, broadcast_update_except, SharedState};
+use crate::state::{send_update_to_client, broadcast_update_nearby, SharedState};
 use crate::actions::handle_player_move;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -17,7 +17,7 @@ pub async fn start_server(state: SharedState) -> anyhow::Result<()> {
     
     // Convert the hash into a hex string
     let hash_hex: String = hash.as_ref().iter().map(|b| format!("{:02x}", b)).collect();
-    println!("Server cert hash: {}", hash_hex);
+    log::info!("Server cert hash: {}", hash_hex);
 
     // Write the hash directly to a file that the frontend can import (or a txt file for Docker)
     let hash_path = std::env::var("CERT_HASH_PATH").unwrap_or_else(|_| "../app/src/cert_hash.ts".to_string());
@@ -27,7 +27,7 @@ pub async fn start_server(state: SharedState) -> anyhow::Result<()> {
         hash_hex.clone()
     };
     if let Err(e) = std::fs::write(&hash_path, content) {
-        println!("Warning: Could not write cert_hash to {}: {}", hash_path, e);
+        log::warn!("Could not write cert_hash to {}: {}", hash_path, e);
     }
 
     let port: u16 = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string()).parse().unwrap_or(3000);
@@ -39,7 +39,7 @@ pub async fn start_server(state: SharedState) -> anyhow::Result<()> {
         .build();
 
     let endpoint = Endpoint::server(config)?;
-    println!("WebTransport server listening on port {}", port);
+    log::info!("WebTransport server listening on port {}", port);
 
     loop {
         let incoming_session = endpoint.accept().await;
@@ -48,7 +48,7 @@ pub async fn start_server(state: SharedState) -> anyhow::Result<()> {
             if let Ok(session_request) = incoming_session.await {
                 if let Ok(connection) = session_request.accept().await {
                     if let Err(e) = handle_session(connection, state_clone).await {
-                        println!("Session error: {}", e);
+                        log::error!("Session error: {}", e);
                     }
                 }
             }
@@ -73,18 +73,34 @@ async fn handle_session(connection: wtransport::Connection, state: SharedState) 
                 last_seq: 0,
             },
         );
+        st.insert_to_grid(client_id.clone(), 0, 0);
     }
     
-    println!("Client {} connected", client_id);
+    log::debug!("Client {} connected", client_id);
     
-    // Broadcast initial state
-    broadcast_update(&state).await;
+    // Broadcast initial state to nearby players only
+    broadcast_update_nearby(&state, 0, 0, None, "").await;
+    // And send an update to the newly connected client
+    send_update_to_client(&state, &client_id).await;
 
     let connection = Arc::new(connection);
     let connection_send = connection.clone();
     let mut send_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
-            if connection_send.send_datagram(&msg).is_err() {
+            if let Ok(opening) = connection_send.open_uni().await {
+                if let Ok(mut stream) = opening.await {
+                    if let Err(e) = stream.write_all(&msg).await {
+                        log::error!("Failed to write to stream: {}", e);
+                        break;
+                    }
+                    if let Err(e) = stream.finish().await {
+                        log::error!("Failed to finish stream: {}", e);
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            } else {
                 break;
             }
         }
@@ -101,12 +117,23 @@ async fn handle_session(connection: wtransport::Connection, state: SharedState) 
             let cid_clone = cid.to_string();
             Box::pin(async move {
                 if let Ok(client_move) = serde_json::from_slice::<ClientMove>(&payload_vec) {
-                    let moved = handle_player_move(&st_clone, &cid_clone, client_move).await;
-                    if moved {
-                        broadcast_update_except(&st_clone, &cid_clone).await;
+                    if let Some((old_x, old_y)) = handle_player_move(&st_clone, &cid_clone, client_move).await {
+                        // send update to client itself to ack its moves and give it the new surroundings
+                        send_update_to_client(&st_clone, &cid_clone).await;
+                        
+                        let (new_x, new_y) = {
+                            let st = st_clone.lock().await;
+                            if let Some(p) = st.players.get(&cid_clone) {
+                                (p.x, p.y)
+                            } else {
+                                (old_x, old_y)
+                            }
+                        };
+                        // broadcast to nearby clients
+                        broadcast_update_nearby(&st_clone, new_x, new_y, Some((old_x, old_y)), &cid_clone).await;
                     }
                 } else {
-                    println!("Failed to parse ClientMove from payload: {:?}", std::str::from_utf8(&payload_vec));
+                    log::warn!("Failed to parse ClientMove from payload: {:?}", std::str::from_utf8(&payload_vec));
                 }
             })
         };
@@ -155,12 +182,18 @@ async fn handle_session(connection: wtransport::Connection, state: SharedState) 
         _ = (&mut recv_task) => send_task.abort(),
     };
 
-    println!("Client {} disconnected", client_id);
+    log::debug!("Client {} disconnected", client_id);
+    let mut last_pos = None;
     {
         let mut st = state.lock().await;
         st.clients.remove(&client_id);
-        st.players.remove(&client_id);
+        if let Some(p) = st.players.remove(&client_id) {
+            st.remove_from_grid(&client_id, p.x, p.y);
+            last_pos = Some((p.x, p.y));
+        }
     }
-    broadcast_update(&state).await;
+    if let Some((x, y)) = last_pos {
+        broadcast_update_nearby(&state, x, y, None, &client_id).await;
+    }
     Ok(())
 }

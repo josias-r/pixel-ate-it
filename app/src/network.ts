@@ -44,17 +44,11 @@ export async function initNetwork() {
     await transport.ready;
     console.log("WebTransport connected!");
 
-    const reader = transport.datagrams.readable.getReader();
-    readDatagrams(reader);
+    const streamReader = transport.incomingUnidirectionalStreams.getReader();
+    readIncomingStreams(streamReader);
 
     window.addEventListener("pagehide", () => {
       if (transport) {
-        transport.close();
-      }
-    });
-
-    window.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden" && transport) {
         transport.close();
       }
     });
@@ -63,23 +57,41 @@ export async function initNetwork() {
   }
 }
 
-async function readDatagrams(reader: any) {
-  const decoder = new TextDecoder("utf-8");
+async function readIncomingStreams(reader: any) {
   while (true) {
     try {
       const { value, done } = await reader.read();
       if (done) break;
       if (value) {
-        const text = decoder.decode(value);
+        handleIncomingStream(value);
+      }
+    } catch (e) {
+      console.error("Failed to read incoming streams", e);
+      break;
+    }
+  }
+}
+
+async function handleIncomingStream(stream: any) {
+  const decoder = new TextDecoder("utf-8");
+  const reader = stream.getReader();
+  let text = "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (value) {
+        text += decoder.decode(value, { stream: !done });
+      }
+      if (done) {
         const msg = JSON.parse(text);
         if (msg.type === "update") {
           handleUpdate(msg.ack, msg.others);
         }
+        break;
       }
-    } catch (e) {
-      console.error("Failed to read datagram", e);
-      break;
     }
+  } catch (e) {
+    console.error("Error reading individual stream", e);
   }
 }
 
