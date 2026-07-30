@@ -2,7 +2,7 @@ import { gameState } from "./state";
 import { updateOtherPixelTarget } from "./input";
 import { hexHash } from "./cert_hash";
 
-export let transport: any = null; // Use any since TypeScript DOM lib might not have WebTransport by default
+export let transport: WebTransport | null = null; // Use any since TypeScript DOM lib might not have WebTransport by default
 
 export async function initNetwork() {
   try {
@@ -27,11 +27,10 @@ export async function initNetwork() {
       };
     }
 
-    // @ts-ignore
     transport = new WebTransport(
       import.meta.env.DEV
         ? "https://localhost:3000/"
-        : "https://your-production-domain.com/",
+        : "__PUBLIC_URL_PLACEHOLDER__",
       options,
     );
 
