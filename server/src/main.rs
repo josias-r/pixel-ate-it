@@ -11,18 +11,26 @@ struct PlayerState {
     id: String,
     x: i32,
     y: i32,
+    last_seq: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct MoveItem {
+    #[serde(rename = "move")]
+    direction: String, // "up", "down", "left", "right"
+    seq: u32,
 }
 
 #[derive(Debug, Deserialize)]
 struct ClientMove {
-    #[serde(rename = "move")]
-    direction: String, // "up", "down", "left", "right"
+    moves: Vec<MoveItem>,
 }
 
 #[derive(Debug, Serialize)]
 struct ServerUpdate {
     #[serde(rename = "type")]
     msg_type: String, // "update"
+    ack: u32,
     others: Vec<RelativePlayer>,
 }
 
@@ -82,6 +90,17 @@ async fn main() -> anyhow::Result<()> {
         .with_identity(identity)
         .build();
 
+    // Add heartbeat broadcast loop to ensure eventual consistency
+    // even if datagrams are dropped or clients desync
+    let state_for_ticker = state.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
+        loop {
+            interval.tick().await;
+            broadcast_update(&state_for_ticker).await;
+        }
+    });
+
     let endpoint = Endpoint::server(config)?;
     println!("WebTransport server listening on port {}", port);
 
@@ -114,6 +133,7 @@ async fn handle_session(connection: wtransport::Connection, state: SharedState) 
                 id: client_id.clone(),
                 x: 0,
                 y: 0,
+                last_seq: 0,
             },
         );
     }
@@ -146,14 +166,21 @@ async fn handle_session(connection: wtransport::Connection, state: SharedState) 
                         let moved = {
                             let mut st = state_clone.lock().await;
                             if let Some(player) = st.players.get_mut(&client_id_clone) {
-                                match client_move.direction.as_str() {
-                                    "up" => player.y -= 1,
-                                    "down" => player.y += 1,
-                                    "left" => player.x -= 1,
-                                    "right" => player.x += 1,
-                                    _ => {}
+                                let mut any_moved = false;
+                                for m in client_move.moves {
+                                    if m.seq > player.last_seq {
+                                        match m.direction.as_str() {
+                                            "up" => player.y -= 1,
+                                            "down" => player.y += 1,
+                                            "left" => player.x -= 1,
+                                            "right" => player.x += 1,
+                                            _ => {}
+                                        }
+                                        player.last_seq = m.seq;
+                                        any_moved = true;
+                                    }
                                 }
-                                true
+                                any_moved
                             } else {
                                 false
                             }
@@ -203,6 +230,7 @@ async fn broadcast_update(state: &SharedState) {
             }
             let msg = ServerUpdate {
                 msg_type: "update".to_string(),
+                ack: my_state.last_seq,
                 others,
             };
             if let Ok(json_bytes) = serde_json::to_vec(&msg) {
@@ -233,6 +261,7 @@ async fn broadcast_update_except(state: &SharedState, exclude_id: &str) {
             }
             let msg = ServerUpdate {
                 msg_type: "update".to_string(),
+                ack: my_state.last_seq,
                 others,
             };
             if let Ok(json_bytes) = serde_json::to_vec(&msg) {
