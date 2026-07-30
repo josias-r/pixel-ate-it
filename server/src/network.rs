@@ -34,6 +34,8 @@ pub async fn start_server(state: SharedState) -> anyhow::Result<()> {
     let config = ServerConfig::builder()
         .with_bind_default(port)
         .with_identity(identity)
+        .max_idle_timeout(Some(std::time::Duration::from_secs(10))).unwrap()
+        .keep_alive_interval(Some(std::time::Duration::from_secs(4)))
         .build();
 
     let endpoint = Endpoint::server(config)?;

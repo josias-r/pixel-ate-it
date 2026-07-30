@@ -47,8 +47,14 @@ export async function initNetwork() {
     const reader = transport.datagrams.readable.getReader();
     readDatagrams(reader);
 
-    window.addEventListener("beforeunload", () => {
+    window.addEventListener("pagehide", () => {
       if (transport) {
+        transport.close();
+      }
+    });
+
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden" && transport) {
         transport.close();
       }
     });
