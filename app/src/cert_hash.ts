@@ -1,1 +1,0 @@
-export const hexHash = "c4f64286c6d8ad99b8e61a2827cd958d2a5c209f86ba0ff6308cd323cb612c69";
