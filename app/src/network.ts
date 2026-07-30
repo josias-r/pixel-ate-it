@@ -6,20 +6,34 @@ export let transport: any = null; // Use any since TypeScript DOM lib might not 
 
 export async function initNetwork() {
   try {
-    // Convert the hex string into a Uint8Array (required by the Web API)
-    const hashBytes = new Uint8Array(
-      hexHash.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
-    );
+    let options = {};
+
+    // The serverCertificateHashes API is ONLY needed for local development with self-signed certs.
+    // In production, your server will use a real SSL cert (like Let's Encrypt),
+    // and the browser will automatically trust it via standard Web PKI.
+    if (import.meta.env.DEV) {
+      // Convert the hex string into a Uint8Array (required by the Web API)
+      const hashBytes = new Uint8Array(
+        hexHash.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
+      );
+
+      options = {
+        serverCertificateHashes: [
+          {
+            algorithm: "sha-256",
+            value: hashBytes,
+          },
+        ],
+      };
+    }
 
     // @ts-ignore
-    transport = new WebTransport("https://localhost:3000/", {
-      serverCertificateHashes: [
-        {
-          algorithm: "sha-256",
-          value: hashBytes,
-        },
-      ],
-    });
+    transport = new WebTransport(
+      import.meta.env.DEV
+        ? "https://localhost:3000/"
+        : "https://your-production-domain.com/",
+      options,
+    );
 
     await transport.ready;
     console.log("WebTransport connected!");
