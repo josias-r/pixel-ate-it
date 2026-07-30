@@ -1,10 +1,10 @@
-export const PIXEL_SIZE = 10;
-export const RASTER_SIZE = PIXEL_SIZE * 0.5;
+export const PIXEL_SIZE = 16;
+export const RASTER_SIZE = PIXEL_SIZE * 1;
 
-export const PLAYER_PIXEL_COLOR = "white";
-export const OTHER_PIXEL_COLOR = "lightgray";
-export const RASTER_COLOR = "#212121";
-export const RASTER_THICKNESS = 2;
+export const PLAYER_PIXEL_COLOR = "#ff007b"; // Cyberpunk Cyan
+export const OTHER_PIXEL_COLOR = "#e4e733"; // Cyberpunk Pink
+export const RASTER_COLOR = "rgba(255, 255, 255, 0.07)";
+export const RASTER_THICKNESS = 1;
 
 export const PLAYER_ANIM_DURATION = 250;
 export const CAMERA_ANIM_DURATION = 150;

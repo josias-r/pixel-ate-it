@@ -1,10 +1,26 @@
-body, html {
+body,
+html {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #000; /* adding a default background so it's visible */
+  background: radial-gradient(circle at center, #1b0f2e 0%, #050510 100%);
+  background: #050510;
+  background-size: 200% 200%;
+  animation: bgPulse 20s ease infinite;
+}
+
+@keyframes bgPulse {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 canvas {

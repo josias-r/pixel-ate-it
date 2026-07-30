@@ -12,14 +12,17 @@ import {
 export function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  ctx.shadowBlur = 0;
   ctx.strokeStyle = RASTER_COLOR;
   ctx.lineWidth = RASTER_THICKNESS;
 
   const screenWorldLeft = gameState.animCameraX - window.innerWidth / 2;
   const screenWorldTop = gameState.animCameraY - window.innerHeight / 2;
 
-  const startX = Math.floor(screenWorldLeft / RASTER_SIZE) * RASTER_SIZE;
-  const startY = Math.floor(screenWorldTop / RASTER_SIZE) * RASTER_SIZE;
+  const startX =
+    Math.floor(screenWorldLeft / RASTER_SIZE) * RASTER_SIZE - RASTER_SIZE / 2;
+  const startY =
+    Math.floor(screenWorldTop / RASTER_SIZE) * RASTER_SIZE - RASTER_SIZE / 2;
 
   for (
     let x = startX;
@@ -50,6 +53,8 @@ export function draw() {
     const pScreenX = p.animOffsetX * PIXEL_SIZE - screenWorldLeft;
     const pScreenY = p.animOffsetY * PIXEL_SIZE - screenWorldTop;
 
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = OTHER_PIXEL_COLOR;
     ctx.fillStyle = OTHER_PIXEL_COLOR;
     ctx.fillRect(
       pScreenX - PIXEL_SIZE / 2,
@@ -63,6 +68,8 @@ export function draw() {
   const pixelScreenX = gameState.animPixelX - screenWorldLeft;
   const pixelScreenY = gameState.animPixelY - screenWorldTop;
 
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = PLAYER_PIXEL_COLOR;
   ctx.fillStyle = PLAYER_PIXEL_COLOR;
   ctx.fillRect(
     pixelScreenX - PIXEL_SIZE / 2,
