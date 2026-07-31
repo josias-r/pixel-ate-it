@@ -38,12 +38,12 @@ export async function initNetwork(colorHex: string) {
 
     if (window.WebTransport) {
       try {
-        const wt = new WebTransport(
-          import.meta.env.DEV
-            ? `https://localhost:3000/?color=${encodeURIComponent(colorHex)}`
-            : `__PUBLIC_URL_PLACEHOLDER__?color=${encodeURIComponent(colorHex)}`,
-          options,
-        );
+        const wtBaseUrl = import.meta.env.DEV
+          ? import.meta.env.VITE_WT_URL || "https://localhost:3000/"
+          : `__PUBLIC_WT_URL_PLACEHOLDER__`;
+
+        const wtUrl = `${wtBaseUrl}?color=${encodeURIComponent(colorHex)}`;
+        const wt = new WebTransport(wtUrl, options);
 
         await wt.ready;
         console.log("WebTransport connected!");
@@ -83,9 +83,12 @@ export async function initNetwork(colorHex: string) {
 
 function connectWebSocket(colorHex: string) {
   isWebSocket = true;
-  const wsUrl = import.meta.env.DEV
-    ? `ws://localhost:3001/?color=${encodeURIComponent(colorHex)}`
-    : `__PUBLIC_WS_URL_PLACEHOLDER__?color=${encodeURIComponent(colorHex)}`;
+
+  const wsBaseUrl = import.meta.env.DEV
+    ? import.meta.env.VITE_WS_URL || "ws://localhost:3001/"
+    : `__PUBLIC_WS_URL_PLACEHOLDER__`;
+
+  const wsUrl = `${wsBaseUrl}?color=${encodeURIComponent(colorHex)}`;
 
   const ws = new WebSocket(wsUrl);
   ws.binaryType = "arraybuffer";

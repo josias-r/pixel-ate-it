@@ -1,11 +1,19 @@
 #!/bin/sh
 
-if [ -n "$PUBLIC_URL" ]; then
-    echo "Injecting PUBLIC_URL: $PUBLIC_URL"
-    sed -i "s|__PUBLIC_URL_PLACEHOLDER__|$PUBLIC_URL|g" /usr/share/nginx/html/assets/*.js
+if [ -n "$PUBLIC_WT_URL" ]; then
+    echo "Injecting PUBLIC_WT_URL: $PUBLIC_WT_URL"
+    sed -i "s|__PUBLIC_WT_URL_PLACEHOLDER__|$PUBLIC_WT_URL|g" /usr/share/nginx/html/assets/*.js
 else
-    echo "No PUBLIC_URL provided, defaulting to https://your-production-domain.com/"
-    sed -i "s|__PUBLIC_URL_PLACEHOLDER__|https://your-production-domain.com/|g" /usr/share/nginx/html/assets/*.js
+    echo "ERROR: PUBLIC_WT_URL environment variable is required!"
+    exit 1
+fi
+
+if [ -n "$PUBLIC_WS_URL" ]; then
+    echo "Injecting PUBLIC_WS_URL: $PUBLIC_WS_URL"
+    sed -i "s|__PUBLIC_WS_URL_PLACEHOLDER__|$PUBLIC_WS_URL|g" /usr/share/nginx/html/assets/*.js
+else
+    echo "ERROR: PUBLIC_WS_URL environment variable is required!"
+    exit 1
 fi
 
 export CERT_HASH_PATH=/tmp/cert_hash.txt
