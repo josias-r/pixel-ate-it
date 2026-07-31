@@ -14,7 +14,7 @@ export interface Move {
 export let moveSeq = 0;
 export const unackedMoves: Move[] = [];
 
-export async function initNetwork() {
+export async function initNetwork(colorHex: string) {
   try {
     let options = {};
 
@@ -36,8 +36,8 @@ export async function initNetwork() {
 
     transport = new WebTransport(
       import.meta.env.DEV
-        ? "https://localhost:3000/"
-        : "__PUBLIC_URL_PLACEHOLDER__",
+        ? `https://localhost:3000/?color=${encodeURIComponent(colorHex)}`
+        : `__PUBLIC_URL_PLACEHOLDER__?color=${encodeURIComponent(colorHex)}`,
       options,
     );
 
@@ -88,9 +88,7 @@ async function handleIncomingStream(stream: any) {
           handleUpdate(msg.ack, msg.others);
         } else if (msg.type === "eaten") {
           gameState.isGameOver = true;
-          const overlay = document.getElementById("game-over");
-          if (overlay) overlay.classList.remove("hidden");
-          if (transport) transport.close();
+          import("./ui").then(({ showGameOverScreen }) => showGameOverScreen());
         }
         break;
       }
@@ -102,7 +100,7 @@ async function handleIncomingStream(stream: any) {
 
 function handleUpdate(
   ack: number,
-  others: { id: string; x: number; y: number }[],
+  others: { id: string; x: number; y: number; color: string }[],
 ) {
   const currentIds = new Set(Object.keys(gameState.otherPixels));
 
@@ -134,6 +132,7 @@ function handleUpdate(
       // Create new pixel
       gameState.otherPixels[other.id] = {
         id: other.id,
+        color: other.color,
         offsetX: localX,
         offsetY: localY,
         animOffsetX: localX,

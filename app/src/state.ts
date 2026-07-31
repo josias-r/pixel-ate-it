@@ -2,6 +2,7 @@ import { IDLE, type AnimationState } from "./constants";
 
 export interface OtherPixel {
   id: string;
+  color: string;
   offsetX: number;
   offsetY: number;
   animOffsetX: number;
@@ -23,4 +24,5 @@ export const gameState = {
   targetOffsetY: 0,
   otherPixels: {} as Record<string, OtherPixel>,
   isGameOver: false,
+  myColor: "#00e5ff",
 };

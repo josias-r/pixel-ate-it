@@ -5,6 +5,7 @@ pub struct PlayerState {
     pub id: String,
     pub x: i32,
     pub y: i32,
+    pub color: String,
     pub last_seq: u32,
 }
 
@@ -33,6 +34,7 @@ pub struct RelativePlayer {
     pub id: String,
     pub x: i32,
     pub y: i32,
+    pub color: String,
 }
 
 #[derive(Debug, Serialize)]

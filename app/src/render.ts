@@ -3,8 +3,6 @@ import { gameState } from "./state";
 import {
   RASTER_SIZE,
   PIXEL_SIZE,
-  PLAYER_PIXEL_COLOR,
-  OTHER_PIXEL_COLOR,
   RASTER_COLOR,
   RASTER_THICKNESS,
 } from "./constants";
@@ -54,8 +52,8 @@ export function draw() {
     const pScreenY = p.animOffsetY * PIXEL_SIZE - screenWorldTop;
 
     ctx.shadowBlur = 15;
-    ctx.shadowColor = OTHER_PIXEL_COLOR;
-    ctx.fillStyle = OTHER_PIXEL_COLOR;
+    ctx.shadowColor = p.color || "#00e5ff";
+    ctx.fillStyle = p.color || "#00e5ff";
     ctx.fillRect(
       pScreenX - PIXEL_SIZE / 2,
       pScreenY - PIXEL_SIZE / 2,
@@ -69,8 +67,8 @@ export function draw() {
   const pixelScreenY = gameState.animPixelY - screenWorldTop;
 
   ctx.shadowBlur = 20;
-  ctx.shadowColor = PLAYER_PIXEL_COLOR;
-  ctx.fillStyle = PLAYER_PIXEL_COLOR;
+  ctx.shadowColor = gameState.myColor || "#00e5ff";
+  ctx.fillStyle = gameState.myColor || "#00e5ff";
   ctx.fillRect(
     pixelScreenX - PIXEL_SIZE / 2,
     pixelScreenY - PIXEL_SIZE / 2,

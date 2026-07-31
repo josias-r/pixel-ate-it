@@ -75,6 +75,7 @@ pub async fn send_update_to_client(state: &SharedState, client_id: &str) {
                     id: p.id.clone(),
                     x: p.x - my_state.x,
                     y: p.y - my_state.y,
+                    color: p.color.clone(),
                 });
             }
             let msg = ServerUpdate {
@@ -131,6 +132,7 @@ pub async fn broadcast_update_nearby(state: &SharedState, center_x: i32, center_
                         id: p.id.clone(),
                         x: p.x - my_state.x,
                         y: p.y - my_state.y,
+                        color: p.color.clone(),
                     });
                 }
                 

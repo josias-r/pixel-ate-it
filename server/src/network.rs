@@ -46,8 +46,21 @@ pub async fn start_server(state: SharedState) -> anyhow::Result<()> {
         let state_clone = state.clone();
         tokio::spawn(async move {
             if let Ok(session_request) = incoming_session.await {
+                // Extract color from path, e.g., /?color=%23ff00aa or /?color=ff00aa
+                let path = session_request.path().to_string();
+                let mut color = "#ff00aa".to_string(); // fallback
+                if let Some(idx) = path.find("color=") {
+                    let extracted = &path[idx + 6..];
+                    let decoded = urlencoding::decode(extracted).unwrap_or(std::borrow::Cow::Borrowed("#ff00aa")).into_owned();
+                    if decoded.starts_with('#') {
+                        color = decoded;
+                    } else {
+                        color = format!("#{}", decoded);
+                    }
+                }
+
                 if let Ok(connection) = session_request.accept().await {
-                    if let Err(e) = handle_session(connection, state_clone).await {
+                    if let Err(e) = handle_session(connection, state_clone, color).await {
                         log::error!("Session error: {}", e);
                     }
                 }
@@ -56,30 +69,60 @@ pub async fn start_server(state: SharedState) -> anyhow::Result<()> {
     }
 }
 
-async fn handle_session(connection: wtransport::Connection, state: SharedState) -> anyhow::Result<()> {
+async fn handle_session(connection: wtransport::Connection, state: SharedState, my_color: String) -> anyhow::Result<()> {
     let client_id = Uuid::new_v4().to_string();
     let (tx, mut rx) = mpsc::unbounded_channel();
 
     // Register client
+    let spawn_pos;
     {
         let mut st = state.lock().await;
+        
+        // Find a random active chunk
+        let active_chunks: Vec<_> = st.grid.keys().cloned().collect();
+        let mut spawn_x = 0;
+        let mut spawn_y = 0;
+        
+        if !active_chunks.is_empty() {
+            // Unsafe to use rand directly without adding it to dependencies.
+            // Let's use a very simple pseudo-random approach based on time or client_id hash, 
+            // or just pick the first chunk to avoid adding new crates.
+            // Wait, we can use the time!
+            let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as usize;
+            let &(cx, cy) = &active_chunks[t % active_chunks.len()];
+            
+            // neighbor offset
+            let dx = ((t / 3) % 3) as i32 - 1;
+            let dy = ((t / 7) % 3) as i32 - 1;
+            
+            // pixel inside chunk
+            let px = ((t / 11) % crate::state::CHUNK_SIZE as usize) as i32;
+            let py = ((t / 13) % crate::state::CHUNK_SIZE as usize) as i32;
+            
+            spawn_x = (cx + dx) * crate::state::CHUNK_SIZE + px;
+            spawn_y = (cy + dy) * crate::state::CHUNK_SIZE + py;
+        }
+        
+        spawn_pos = (spawn_x, spawn_y);
+
         st.clients.insert(client_id.clone(), tx);
         st.players.insert(
             client_id.clone(),
             PlayerState {
                 id: client_id.clone(),
-                x: 0,
-                y: 0,
+                x: spawn_x,
+                y: spawn_y,
+                color: my_color,
                 last_seq: 0,
             },
         );
-        st.insert_to_grid(client_id.clone(), 0, 0);
+        st.insert_to_grid(client_id.clone(), spawn_x, spawn_y);
     }
     
     log::debug!("Client {} connected", client_id);
     
     // Broadcast initial state to nearby players only
-    broadcast_update_nearby(&state, 0, 0, None, "").await;
+    broadcast_update_nearby(&state, spawn_pos.0, spawn_pos.1, None, "").await;
     // And send an update to the newly connected client
     send_update_to_client(&state, &client_id).await;
 
