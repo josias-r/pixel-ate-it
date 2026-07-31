@@ -1,4 +1,4 @@
-use crate::models::ClientMove;
+use crate::models::{ClientMove, EatenMessage};
 use crate::state::SharedState;
 
 pub async fn handle_player_move(state: &SharedState, client_id: &str, client_move: ClientMove) -> Option<(i32, i32)> {
@@ -44,6 +44,45 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
 
             // Add to new chunk
             state_lock.grid.entry((new_chunk_x, new_chunk_y)).or_default().insert(client_id.to_string());
+        }
+
+        // Eat mechanics
+        let mut eaten_ids = Vec::new();
+        if let Some(chunk_players) = state_lock.grid.get(&(new_chunk_x, new_chunk_y)) {
+            for pid in chunk_players {
+                if pid != client_id {
+                    if let Some(other) = state_lock.players.get(pid) {
+                        if other.x == player.x && other.y == player.y {
+                            eaten_ids.push(pid.clone());
+                        }
+                    }
+                }
+            }
+        }
+        
+        for pid in eaten_ids {
+            log::info!("Player {} was eaten by {}", pid, client_id);
+            // Send 'eaten' message
+            if let Some(sender) = state_lock.clients.get(&pid) {
+                let msg = EatenMessage {
+                    msg_type: "eaten".to_string(),
+                    by_id: client_id.to_string(),
+                };
+                if let Ok(json_bytes) = serde_json::to_vec(&msg) {
+                    let _ = sender.send(json_bytes);
+                }
+            }
+            
+            // Remove victim from game state (they become a ghost with no player entity)
+            if let Some(victim) = state_lock.players.remove(&pid) {
+                let v_chunk = crate::state::AppState::get_chunk(victim.x, victim.y);
+                if let Some(players) = state_lock.grid.get_mut(&v_chunk) {
+                    players.remove(&pid);
+                    if players.is_empty() {
+                        state_lock.grid.remove(&v_chunk);
+                    }
+                }
+            }
         }
     }
 

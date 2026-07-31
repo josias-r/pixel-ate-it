@@ -24,7 +24,7 @@ export function updateOtherPixelTarget(
 
 export function initInput() {
   function handleMoveAction(moveDx: number, moveDy: number) {
-    if (gameState.state !== "IDLE") return;
+    if (gameState.isGameOver || gameState.state !== "IDLE") return;
 
     if (moveDx > 0) {
       gameState.targetOffsetX = 1;

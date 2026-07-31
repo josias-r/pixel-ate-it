@@ -34,3 +34,10 @@ pub struct RelativePlayer {
     pub x: i32,
     pub y: i32,
 }
+
+#[derive(Debug, Serialize)]
+pub struct EatenMessage {
+    #[serde(rename = "type")]
+    pub msg_type: String, // "eaten"
+    pub by_id: String,
+}

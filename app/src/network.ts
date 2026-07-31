@@ -86,6 +86,11 @@ async function handleIncomingStream(stream: any) {
         const msg = JSON.parse(text);
         if (msg.type === "update") {
           handleUpdate(msg.ack, msg.others);
+        } else if (msg.type === "eaten") {
+          gameState.isGameOver = true;
+          const overlay = document.getElementById("game-over");
+          if (overlay) overlay.classList.remove("hidden");
+          if (transport) transport.close();
         }
         break;
       }

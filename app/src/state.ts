@@ -22,4 +22,5 @@ export const gameState = {
   targetOffsetX: 0,
   targetOffsetY: 0,
   otherPixels: {} as Record<string, OtherPixel>,
+  isGameOver: false,
 };
