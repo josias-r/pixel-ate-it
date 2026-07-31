@@ -1,6 +1,9 @@
 use crate::models::{PlayerState, RelativePlayer, ServerUpdate};
-use std::{collections::{HashMap, HashSet}, sync::Arc};
-use tokio::sync::{mpsc, Mutex};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
+use tokio::sync::{Mutex, mpsc};
 
 pub const CHUNK_SIZE: i32 = 9;
 
@@ -10,6 +13,7 @@ pub struct AppState {
     pub players: HashMap<String, PlayerState>,
     pub clients: HashMap<String, ClientSender>,
     pub grid: HashMap<(i32, i32), HashSet<String>>,
+    pub leaderboard: Vec<crate::models::LeaderboardEntry>,
 }
 
 impl AppState {
@@ -18,6 +22,7 @@ impl AppState {
             players: HashMap::new(),
             clients: HashMap::new(),
             grid: HashMap::new(),
+            leaderboard: Vec::new(),
         }
     }
 
@@ -40,7 +45,12 @@ impl AppState {
         }
     }
 
-    pub fn get_nearby_players(&self, center_x: i32, center_y: i32, exclude_id: &str) -> Vec<PlayerState> {
+    pub fn get_nearby_players(
+        &self,
+        center_x: i32,
+        center_y: i32,
+        exclude_id: &str,
+    ) -> Vec<PlayerState> {
         let (cx, cy) = Self::get_chunk(center_x, center_y);
         let mut nearby = Vec::new();
         for dx in -1..=1 {
@@ -56,8 +66,36 @@ impl AppState {
                 }
             }
         }
-        log::trace!("get_nearby_players for {} at ({}, {}) found {} players", exclude_id, center_x, center_y, nearby.len());
+        log::trace!(
+            "get_nearby_players for {} at ({}, {}) found {} players",
+            exclude_id,
+            center_x,
+            center_y,
+            nearby.len()
+        );
         nearby
+    }
+
+    pub fn update_leaderboard(&mut self) -> bool {
+        let mut entries: Vec<crate::models::LeaderboardEntry> = self
+            .players
+            .values()
+            .map(|p| crate::models::LeaderboardEntry {
+                id: p.id.clone(),
+                color: p.color.clone(),
+                score: p.score,
+            })
+            .collect();
+
+        entries.sort_by(|a, b| b.score.cmp(&a.score));
+        entries.truncate(10);
+
+        if self.leaderboard != entries {
+            self.leaderboard = entries;
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -68,7 +106,11 @@ pub async fn send_update_to_client(state: &SharedState, client_id: &str) {
     if let Some(sender) = st.clients.get(client_id) {
         if let Some(my_state) = st.players.get(client_id) {
             let nearby_players = st.get_nearby_players(my_state.x, my_state.y, client_id);
-            log::debug!("send_update_to_client: sending {} nearby players to {}", nearby_players.len(), client_id);
+            log::debug!(
+                "send_update_to_client: sending {} nearby players to {}",
+                nearby_players.len(),
+                client_id
+            );
             let mut others = Vec::new();
             for p in nearby_players {
                 others.push(RelativePlayer {
@@ -90,21 +132,27 @@ pub async fn send_update_to_client(state: &SharedState, client_id: &str) {
     }
 }
 
-pub async fn broadcast_update_nearby(state: &SharedState, center_x: i32, center_y: i32, old_pos: Option<(i32, i32)>, exclude_id: &str) {
+pub async fn broadcast_update_nearby(
+    state: &SharedState,
+    center_x: i32,
+    center_y: i32,
+    old_pos: Option<(i32, i32)>,
+    exclude_id: &str,
+) {
     let st = state.lock().await;
-    
+
     let mut chunks_to_check = HashSet::new();
-    
+
     let (cx, cy) = AppState::get_chunk(center_x, center_y);
     chunks_to_check.insert((cx, cy));
-    
+
     if let Some((ox, oy)) = old_pos {
         let (ocx, ocy) = AppState::get_chunk(ox, oy);
         chunks_to_check.insert((ocx, ocy));
     }
-    
+
     let mut nearby_client_ids = HashSet::new();
-    
+
     for (chunk_x, chunk_y) in chunks_to_check {
         for dx in -1..=1 {
             for dy in -1..=1 {
@@ -119,13 +167,19 @@ pub async fn broadcast_update_nearby(state: &SharedState, center_x: i32, center_
         }
     }
 
-    log::debug!("broadcast_update_nearby: center ({}, {}) old_pos {:?} sending to {} nearby clients", center_x, center_y, old_pos, nearby_client_ids.len());
+    log::debug!(
+        "broadcast_update_nearby: center ({}, {}) old_pos {:?} sending to {} nearby clients",
+        center_x,
+        center_y,
+        old_pos,
+        nearby_client_ids.len()
+    );
 
     for id in nearby_client_ids {
         if let Some(sender) = st.clients.get(&id) {
             if let Some(my_state) = st.players.get(&id) {
                 let nearby_players = st.get_nearby_players(my_state.x, my_state.y, &id);
-                
+
                 let mut others = Vec::new();
                 for p in nearby_players {
                     others.push(RelativePlayer {
@@ -135,7 +189,7 @@ pub async fn broadcast_update_nearby(state: &SharedState, center_x: i32, center_
                         color: p.color.clone(),
                     });
                 }
-                
+
                 let msg = ServerUpdate {
                     msg_type: "update".to_string(),
                     ack: my_state.last_seq,
@@ -149,49 +203,32 @@ pub async fn broadcast_update_nearby(state: &SharedState, center_x: i32, center_
     }
 }
 
-pub async fn broadcast_leaderboard(state: &SharedState) {
-    let st = state.lock().await;
-    
-    let mut entries: Vec<crate::models::LeaderboardEntry> = st.players.values().map(|p| crate::models::LeaderboardEntry {
-        id: p.id.clone(),
-        color: p.color.clone(),
-        score: p.score,
-    }).collect();
-    
-    // Sort descending by score
-    entries.sort_by(|a, b| b.score.cmp(&a.score));
-    entries.truncate(10);
-    
-    let msg = crate::models::LeaderboardUpdate {
-        msg_type: "leaderboard".to_string(),
-        top_players: entries,
-    };
-    
-    if let Ok(json_bytes) = serde_json::to_vec(&msg) {
-        for sender in st.clients.values() {
-            let _ = sender.send(json_bytes.clone());
+pub async fn broadcast_leaderboard_if_changed(state: &SharedState) {
+    let mut st = state.lock().await;
+
+    if st.update_leaderboard() {
+        let msg = crate::models::LeaderboardUpdate {
+            msg_type: "leaderboard".to_string(),
+            top_players: st.leaderboard.clone(),
+        };
+
+        if let Ok(json_bytes) = serde_json::to_vec(&msg) {
+            for sender in st.clients.values() {
+                let _ = sender.send(json_bytes.clone());
+            }
         }
     }
 }
 
 pub async fn send_leaderboard_to_client(state: &SharedState, client_id: &str) {
     let st = state.lock().await;
-    
+
     if let Some(sender) = st.clients.get(client_id) {
-        let mut entries: Vec<crate::models::LeaderboardEntry> = st.players.values().map(|p| crate::models::LeaderboardEntry {
-            id: p.id.clone(),
-            color: p.color.clone(),
-            score: p.score,
-        }).collect();
-        
-        entries.sort_by(|a, b| b.score.cmp(&a.score));
-        entries.truncate(10);
-        
         let msg = crate::models::LeaderboardUpdate {
             msg_type: "leaderboard".to_string(),
-            top_players: entries,
+            top_players: st.leaderboard.clone(),
         };
-        
+
         if let Ok(json_bytes) = serde_json::to_vec(&msg) {
             let _ = sender.send(json_bytes);
         }

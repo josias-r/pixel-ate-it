@@ -1,12 +1,12 @@
-use crate::models::{ClientMove, PlayerState};
-use crate::state::{broadcast_update_nearby, send_update_to_client, SharedState};
 use crate::actions::handle_player_move;
+use crate::models::{ClientMove, PlayerState};
+use crate::state::{SharedState, broadcast_update_nearby, send_update_to_client};
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
+use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
 use tokio_tungstenite::tungstenite::protocol::Message;
 use uuid::Uuid;
-use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
 
 pub async fn start_websocket_server(state: SharedState) -> anyhow::Result<()> {
     let port: u16 = std::env::var("WS_PORT")
@@ -21,7 +21,7 @@ pub async fn start_websocket_server(state: SharedState) -> anyhow::Result<()> {
         let state_clone = state.clone();
         tokio::spawn(async move {
             let mut extracted_color = "#ff00aa".to_string();
-            
+
             let callback = |req: &Request, response: Response| {
                 let uri = req.uri().to_string();
                 if let Some(idx) = uri.find("color=") {
@@ -45,7 +45,7 @@ pub async fn start_websocket_server(state: SharedState) -> anyhow::Result<()> {
             }
         });
     }
-    
+
     Ok(())
 }
 
@@ -62,25 +62,28 @@ async fn handle_ws_session(
     let spawn_pos;
     {
         let mut st = state.lock().await;
-        
+
         let active_chunks: Vec<_> = st.grid.keys().cloned().collect();
         let mut spawn_x = 0;
         let mut spawn_y = 0;
-        
+
         if !active_chunks.is_empty() {
-            let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as usize;
+            let t = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as usize;
             let &(cx, cy) = &active_chunks[t % active_chunks.len()];
-            
+
             let dx = ((t / 3) % 3) as i32 - 1;
             let dy = ((t / 7) % 3) as i32 - 1;
-            
+
             let px = ((t / 11) % crate::state::CHUNK_SIZE as usize) as i32;
             let py = ((t / 13) % crate::state::CHUNK_SIZE as usize) as i32;
-            
+
             spawn_x = (cx + dx) * crate::state::CHUNK_SIZE + px;
             spawn_y = (cy + dy) * crate::state::CHUNK_SIZE + py;
         }
-        
+
         spawn_pos = (spawn_x, spawn_y);
 
         st.clients.insert(client_id.clone(), tx);
@@ -97,12 +100,13 @@ async fn handle_ws_session(
         );
         st.insert_to_grid(client_id.clone(), spawn_x, spawn_y);
     }
-    
+
     log::debug!("WS Client {} connected", client_id);
-    
+
     broadcast_update_nearby(&state, spawn_pos.0, spawn_pos.1, None, "").await;
     send_update_to_client(&state, &client_id).await;
     crate::state::send_leaderboard_to_client(&state, &client_id).await;
+    crate::state::broadcast_leaderboard_if_changed(&state).await;
 
     let mut send_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
@@ -119,9 +123,11 @@ async fn handle_ws_session(
         while let Some(Ok(msg)) = ws_receiver.next().await {
             if let Message::Binary(payload_vec) = msg {
                 if let Ok(client_move) = serde_json::from_slice::<ClientMove>(&payload_vec) {
-                    if let Some((old_x, old_y)) = handle_player_move(&state_clone, &client_id_clone, client_move).await {
+                    if let Some((old_x, old_y)) =
+                        handle_player_move(&state_clone, &client_id_clone, client_move).await
+                    {
                         send_update_to_client(&state_clone, &client_id_clone).await;
-                        
+
                         let (new_x, new_y) = {
                             let st = state_clone.lock().await;
                             if let Some(p) = st.players.get(&client_id_clone) {
@@ -130,7 +136,14 @@ async fn handle_ws_session(
                                 (old_x, old_y)
                             }
                         };
-                        broadcast_update_nearby(&state_clone, new_x, new_y, Some((old_x, old_y)), &client_id_clone).await;
+                        broadcast_update_nearby(
+                            &state_clone,
+                            new_x,
+                            new_y,
+                            Some((old_x, old_y)),
+                            &client_id_clone,
+                        )
+                        .await;
                     }
                 }
             } else if let Message::Text(_) = msg {
@@ -158,5 +171,6 @@ async fn handle_ws_session(
     if let Some((x, y)) = last_pos {
         broadcast_update_nearby(&state, x, y, None, &client_id).await;
     }
+    crate::state::broadcast_leaderboard_if_changed(&state).await;
     Ok(())
 }

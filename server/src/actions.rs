@@ -1,9 +1,13 @@
 use crate::models::{ClientMove, EatenMessage};
 use crate::state::SharedState;
 
-pub async fn handle_player_move(state: &SharedState, client_id: &str, client_move: ClientMove) -> Option<(i32, i32)> {
+pub async fn handle_player_move(
+    state: &SharedState,
+    client_id: &str,
+    client_move: ClientMove,
+) -> Option<(i32, i32)> {
     let mut state_lock = state.lock().await;
-    
+
     // Extract the player to modify it without holding a mutable reference to `players`
     let mut player = if let Some(p) = state_lock.players.remove(client_id) {
         p
@@ -44,7 +48,11 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
             }
 
             // Add to new chunk
-            state_lock.grid.entry((new_chunk_x, new_chunk_y)).or_default().insert(client_id.to_string());
+            state_lock
+                .grid
+                .entry((new_chunk_x, new_chunk_y))
+                .or_default()
+                .insert(client_id.to_string());
         }
 
         // Eat mechanics
@@ -59,7 +67,7 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
                 }
             }
         }
-        
+
         for pid in &eaten_ids {
             log::info!("Player {} was eaten by {}", pid, client_id);
             // Send 'eaten' message
@@ -72,7 +80,7 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
                     let _ = sender.send(json_bytes);
                 }
             }
-            
+
             // Remove victim from game state (they become a ghost with no player entity)
             if let Some(victim) = state_lock.players.remove(pid) {
                 let v_chunk = crate::state::AppState::get_chunk(victim.x, victim.y);
@@ -84,8 +92,9 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
                 }
             }
         }
-        
+
         let did_eat = !eaten_ids.is_empty();
+
         if did_eat {
             player.score += eaten_ids.len() as u32;
         }
@@ -93,13 +102,17 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
 
     // Put the player back
     state_lock.players.insert(client_id.to_string(), player);
-    
-    let did_eat = if any_moved { !eaten_ids.is_empty() } else { false };
-    
+
+    let did_eat = if any_moved {
+        !eaten_ids.is_empty()
+    } else {
+        false
+    };
+
     drop(state_lock);
 
     if did_eat {
-        crate::state::broadcast_leaderboard(state).await;
+        crate::state::broadcast_leaderboard_if_changed(state).await;
     }
 
     if any_moved {

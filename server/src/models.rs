@@ -45,7 +45,7 @@ pub struct EatenMessage {
     pub by_id: String,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 pub struct LeaderboardEntry {
     pub id: String,
     pub color: String,
