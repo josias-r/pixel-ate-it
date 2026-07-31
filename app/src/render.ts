@@ -7,6 +7,10 @@ import {
   RASTER_THICKNESS,
 } from "./constants";
 
+export function getPixelSize(score: number) {
+  return Math.floor(Math.sqrt(score + 1));
+}
+
 export function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -50,6 +54,7 @@ export function draw() {
   Object.values(gameState.otherPixels).forEach((p) => {
     const pScreenX = p.animOffsetX * PIXEL_SIZE - screenWorldLeft;
     const pScreenY = p.animOffsetY * PIXEL_SIZE - screenWorldTop;
+    const size = getPixelSize(p.score || 0);
 
     ctx.shadowBlur = 15;
     ctx.shadowColor = p.color || "#00e5ff";
@@ -57,12 +62,13 @@ export function draw() {
     ctx.fillRect(
       pScreenX - PIXEL_SIZE / 2,
       pScreenY - PIXEL_SIZE / 2,
-      PIXEL_SIZE,
-      PIXEL_SIZE,
+      PIXEL_SIZE * size,
+      PIXEL_SIZE * size,
     );
   });
 
   // Draw main player pixel
+  const size = getPixelSize(gameState.myScore || 0);
   const pixelScreenX = gameState.animPixelX - screenWorldLeft;
   const pixelScreenY = gameState.animPixelY - screenWorldTop;
 
@@ -72,7 +78,7 @@ export function draw() {
   ctx.fillRect(
     pixelScreenX - PIXEL_SIZE / 2,
     pixelScreenY - PIXEL_SIZE / 2,
-    PIXEL_SIZE,
-    PIXEL_SIZE,
+    PIXEL_SIZE * size,
+    PIXEL_SIZE * size,
   );
 }

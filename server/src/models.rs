@@ -27,6 +27,7 @@ pub struct ServerUpdate {
     #[serde(rename = "type")]
     pub msg_type: String, // "update"
     pub ack: u32,
+    pub my_score: u32,
     pub others: Vec<RelativePlayer>,
 }
 
@@ -36,6 +37,7 @@ pub struct RelativePlayer {
     pub x: i32,
     pub y: i32,
     pub color: String,
+    pub score: u32,
 }
 
 #[derive(Debug, Serialize)]

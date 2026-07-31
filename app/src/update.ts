@@ -1,4 +1,5 @@
 import { gameState } from "./state";
+import { getPixelSize } from "./render";
 import {
   ANIMATING_PIXEL,
   PLAYER_ANIM_DURATION,
@@ -79,8 +80,14 @@ export function update(dt: number) {
 
   // Continuous camera lerp tracking the player pixel
   // The further away it is, the faster it moves!
+  const size = getPixelSize(gameState.myScore || 0);
+  const centerOffset = (size - 1) * PIXEL_SIZE / 2;
+
+  const targetCameraX = gameState.animPixelX + centerOffset;
+  const targetCameraY = gameState.animPixelY + centerOffset;
+
   const cameraLerpSpeed = 7;
   const t = 1 - Math.exp(-cameraLerpSpeed * (dt / 1000));
-  gameState.animCameraX += (gameState.animPixelX - gameState.animCameraX) * t;
-  gameState.animCameraY += (gameState.animPixelY - gameState.animCameraY) * t;
+  gameState.animCameraX += (targetCameraX - gameState.animCameraX) * t;
+  gameState.animCameraY += (targetCameraY - gameState.animCameraY) * t;
 }

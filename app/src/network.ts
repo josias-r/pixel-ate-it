@@ -106,7 +106,7 @@ function connectWebSocket(colorHex: string) {
       const text = decoder.decode(event.data);
       const msg = JSON.parse(text);
       if (msg.type === "update") {
-        handleUpdate(msg.ack, msg.others);
+        handleUpdate(msg.ack, msg.my_score, msg.others);
       } else if (msg.type === "leaderboard") {
         gameState.leaderboard = msg.top_players;
         updateLeaderboardUI(msg.top_players);
@@ -148,7 +148,7 @@ async function handleIncomingStream(stream: any) {
       if (done) {
         const msg = JSON.parse(text);
         if (msg.type === "update") {
-          handleUpdate(msg.ack, msg.others);
+          handleUpdate(msg.ack, msg.my_score, msg.others);
         } else if (msg.type === "leaderboard") {
           gameState.leaderboard = msg.top_players;
           updateLeaderboardUI(msg.top_players);
@@ -166,8 +166,10 @@ async function handleIncomingStream(stream: any) {
 
 function handleUpdate(
   ack: number,
-  others: { id: string; x: number; y: number; color: string }[],
+  myScore: number,
+  others: { id: string; x: number; y: number; color: string; score: number }[],
 ) {
+  gameState.myScore = myScore;
   const currentIds = new Set(Object.keys(gameState.otherPixels));
 
   while (unackedMoves.length > 0 && unackedMoves[0].seq <= ack) {
@@ -207,9 +209,11 @@ function handleUpdate(
         targetOffsetY: localY,
         state: "IDLE",
         animationTimer: 0,
+        score: other.score,
       };
     } else {
       // Update existing pixel
+      gameState.otherPixels[other.id].score = other.score;
       updateOtherPixelTarget(other.id, localX, localY);
     }
   }

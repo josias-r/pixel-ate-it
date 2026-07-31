@@ -131,7 +131,7 @@ async fn handle_session(
                 score: 0,
             },
         );
-        st.insert_to_grid(client_id.clone(), spawn_x, spawn_y);
+        st.insert_to_grid(client_id.clone(), spawn_x, spawn_y, 0);
     }
 
     log::debug!("Client {} connected", client_id);
@@ -264,7 +264,7 @@ async fn handle_session(
         let mut st = state.lock().await;
         st.clients.remove(&client_id);
         if let Some(p) = st.players.remove(&client_id) {
-            st.remove_from_grid(&client_id, p.x, p.y);
+            st.remove_from_grid(&client_id, p.x, p.y, p.score);
             last_pos = Some((p.x, p.y));
         }
     }

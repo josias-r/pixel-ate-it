@@ -30,17 +30,41 @@ impl AppState {
         (x.div_euclid(CHUNK_SIZE), y.div_euclid(CHUNK_SIZE))
     }
 
-    pub fn insert_to_grid(&mut self, player_id: String, x: i32, y: i32) {
-        let chunk = Self::get_chunk(x, y);
-        self.grid.entry(chunk).or_default().insert(player_id);
+    pub fn get_size(score: u32) -> i32 {
+        ((score + 1) as f64).sqrt().floor() as i32
     }
 
-    pub fn remove_from_grid(&mut self, player_id: &str, x: i32, y: i32) {
-        let chunk = Self::get_chunk(x, y);
-        if let Some(players) = self.grid.get_mut(&chunk) {
-            players.remove(player_id);
-            if players.is_empty() {
-                self.grid.remove(&chunk);
+    pub fn get_chunks_for_rect(x: i32, y: i32, size: i32) -> Vec<(i32, i32)> {
+        let mut chunks = Vec::new();
+        let start_cx = x.div_euclid(CHUNK_SIZE);
+        let start_cy = y.div_euclid(CHUNK_SIZE);
+        let end_cx = (x + size - 1).div_euclid(CHUNK_SIZE);
+        let end_cy = (y + size - 1).div_euclid(CHUNK_SIZE);
+        for cx in start_cx..=end_cx {
+            for cy in start_cy..=end_cy {
+                chunks.push((cx, cy));
+            }
+        }
+        chunks
+    }
+
+    pub fn insert_to_grid(&mut self, player_id: String, x: i32, y: i32, score: u32) {
+        let size = Self::get_size(score);
+        let chunks = Self::get_chunks_for_rect(x, y, size);
+        for chunk in chunks {
+            self.grid.entry(chunk).or_default().insert(player_id.clone());
+        }
+    }
+
+    pub fn remove_from_grid(&mut self, player_id: &str, x: i32, y: i32, score: u32) {
+        let size = Self::get_size(score);
+        let chunks = Self::get_chunks_for_rect(x, y, size);
+        for chunk in chunks {
+            if let Some(players) = self.grid.get_mut(&chunk) {
+                players.remove(player_id);
+                if players.is_empty() {
+                    self.grid.remove(&chunk);
+                }
             }
         }
     }
@@ -53,6 +77,7 @@ impl AppState {
     ) -> Vec<PlayerState> {
         let (cx, cy) = Self::get_chunk(center_x, center_y);
         let mut nearby = Vec::new();
+        // Check a 3x3 chunk area around the center chunk (should cover most reasonable sizes)
         for dx in -1..=1 {
             for dy in -1..=1 {
                 if let Some(chunk_players) = self.grid.get(&(cx + dx, cy + dy)) {
@@ -118,11 +143,13 @@ pub async fn send_update_to_client(state: &SharedState, client_id: &str) {
                     x: p.x - my_state.x,
                     y: p.y - my_state.y,
                     color: p.color.clone(),
+                    score: p.score,
                 });
             }
             let msg = ServerUpdate {
                 msg_type: "update".to_string(),
                 ack: my_state.last_seq,
+                my_score: my_state.score,
                 others,
             };
             if let Ok(json_bytes) = serde_json::to_vec(&msg) {
@@ -187,12 +214,14 @@ pub async fn broadcast_update_nearby(
                         x: p.x - my_state.x,
                         y: p.y - my_state.y,
                         color: p.color.clone(),
+                        score: p.score,
                     });
                 }
 
                 let msg = ServerUpdate {
                     msg_type: "update".to_string(),
                     ack: my_state.last_seq,
+                    my_score: my_state.score,
                     others,
                 };
                 if let Ok(json_bytes) = serde_json::to_vec(&msg) {

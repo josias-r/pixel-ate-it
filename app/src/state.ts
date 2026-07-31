@@ -11,6 +11,7 @@ export interface OtherPixel {
   targetOffsetY: number;
   state: "IDLE" | "ANIMATING";
   animationTimer: number;
+  score: number;
 }
 
 export interface GameState {
@@ -25,6 +26,7 @@ export interface GameState {
   otherPixels: Record<string, OtherPixel>;
   isGameOver: boolean;
   myColor: string;
+  myScore: number;
   leaderboard: { id: string; color: string; score: number }[];
 }
 
@@ -40,5 +42,6 @@ export const gameState: GameState = {
   otherPixels: {} as Record<string, OtherPixel>,
   isGameOver: false,
   myColor: "#00e5ff",
+  myScore: 0,
   leaderboard: [],
 };

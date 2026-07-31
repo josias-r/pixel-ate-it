@@ -53,7 +53,7 @@ pub async fn run_bot_thread(state: SharedState) {
                     score: 0,
                 },
             );
-            st.insert_to_grid(bot_id.clone(), spawn_x, spawn_y);
+            st.insert_to_grid(bot_id.clone(), spawn_x, spawn_y, 0);
             bots.push(bot_id.clone());
             bot_seqs.insert(bot_id.clone(), 0);
             needed_bots -= 1;
@@ -62,7 +62,7 @@ pub async fn run_bot_thread(state: SharedState) {
         while needed_bots < 0 {
             if let Some(bot_id) = bots.pop() {
                 if let Some(p) = st.players.remove(&bot_id) {
-                    st.remove_from_grid(&bot_id, p.x, p.y);
+                    st.remove_from_grid(&bot_id, p.x, p.y, p.score);
                     bot_seqs.remove(&bot_id);
                 }
             }
