@@ -39,9 +39,9 @@ export function mountJoinScreen() {
     btn.className = "color-btn";
     btn.style.backgroundColor = color;
     if (index === 0) btn.classList.add("selected");
-    
+
     btn.addEventListener("click", () => updateSelection(btn, color));
-    
+
     buttons.push(btn);
     colorOptions.appendChild(btn);
   });
@@ -52,8 +52,9 @@ export function mountJoinScreen() {
 
   const customBtn = document.createElement("button");
   customBtn.className = "color-btn custom-btn";
-  customBtn.style.background = "linear-gradient(45deg, #ff00aa, #00e5ff, #fce803)";
-  
+  customBtn.style.background =
+    "linear-gradient(45deg, #ff00aa, #00e5ff, #fce803)";
+
   const customInput = document.createElement("input");
   customInput.type = "color";
   customInput.id = "custom-color";
@@ -109,8 +110,29 @@ export function showGameOverScreen() {
   container.appendChild(respawnBtn);
 
   document.body.appendChild(container);
-  
+
   if (transport) {
     transport.close();
   }
+}
+
+export function showToast(message: string) {
+  const toast = document.createElement("div");
+  toast.className = "toast-message";
+  toast.textContent = message;
+
+  toast.addEventListener("click", () => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 300);
+  });
+
+  document.body.appendChild(toast);
+
+  // Auto dismiss after 5 seconds if not clicked
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      toast.style.opacity = "0";
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 5000);
 }

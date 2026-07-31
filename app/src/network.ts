@@ -1,8 +1,10 @@
 import { gameState } from "./state";
 import { updateOtherPixelTarget } from "./input";
 import { hexHash } from "./cert_hash";
+import { showToast } from "./ui";
 
-export let transport: WebTransport | null = null; // Use any since TypeScript DOM lib might not have WebTransport by default
+export let transport: WebTransport | WebSocket | null = null;
+export let isWebSocket = false;
 
 export interface Move {
   seq: number;
@@ -34,18 +36,36 @@ export async function initNetwork(colorHex: string) {
       ],
     };
 
-    transport = new WebTransport(
-      import.meta.env.DEV
-        ? `https://localhost:3000/?color=${encodeURIComponent(colorHex)}`
-        : `__PUBLIC_URL_PLACEHOLDER__?color=${encodeURIComponent(colorHex)}`,
-      options,
-    );
+    if (window.WebTransport) {
+      try {
+        const wt = new WebTransport(
+          import.meta.env.DEV
+            ? `https://localhost:3000/?color=${encodeURIComponent(colorHex)}`
+            : `__PUBLIC_URL_PLACEHOLDER__?color=${encodeURIComponent(colorHex)}`,
+          options,
+        );
 
-    await transport.ready;
-    console.log("WebTransport connected!");
+        await wt.ready;
+        console.log("WebTransport connected!");
+        transport = wt;
 
-    const streamReader = transport.incomingUnidirectionalStreams.getReader();
-    readIncomingStreams(streamReader);
+        const streamReader = wt.incomingUnidirectionalStreams.getReader();
+        readIncomingStreams(streamReader);
+      } catch (wtError) {
+        console.warn(
+          "WebTransport connection failed, falling back to WebSocket",
+          wtError,
+        );
+        showToast("WebTransport unavailable. Falling back to WebSocket.");
+        connectWebSocket(colorHex);
+      }
+    } else {
+      console.warn("WebTransport not supported, falling back to WebSocket");
+      showToast(
+        "Please update your browser to use WebTransport for better performance.",
+      );
+      connectWebSocket(colorHex);
+    }
 
     window.addEventListener("pagehide", () => {
       if (transport) {
@@ -53,8 +73,45 @@ export async function initNetwork(colorHex: string) {
       }
     });
   } catch (e) {
-    console.error("WebTransport connection failed:", e);
+    console.error("Network initialization failed:", e);
+    showToast(
+      "Please update your browser to use WebTransport for better performance.",
+    );
+    connectWebSocket(colorHex);
   }
+}
+
+function connectWebSocket(colorHex: string) {
+  isWebSocket = true;
+  const wsUrl = import.meta.env.DEV
+    ? `ws://localhost:3001/?color=${encodeURIComponent(colorHex)}`
+    : `__PUBLIC_WS_URL_PLACEHOLDER__?color=${encodeURIComponent(colorHex)}`;
+
+  const ws = new WebSocket(wsUrl);
+  ws.binaryType = "arraybuffer";
+  transport = ws;
+
+  ws.onopen = () => console.log("WebSocket connected!");
+
+  ws.onerror = () => {
+    showToast("Your phone is bad bro, get a new one");
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const decoder = new TextDecoder("utf-8");
+      const text = decoder.decode(event.data);
+      const msg = JSON.parse(text);
+      if (msg.type === "update") {
+        handleUpdate(msg.ack, msg.others);
+      } else if (msg.type === "eaten") {
+        gameState.isGameOver = true;
+        import("./ui").then(({ showGameOverScreen }) => showGameOverScreen());
+      }
+    } catch (e) {
+      console.error("Failed to parse WebSocket message", e);
+    }
+  };
 }
 
 async function readIncomingStreams(reader: any) {
@@ -163,21 +220,28 @@ export function sendMove(direction: string, dx: number, dy: number) {
   const encoder = new TextEncoder();
   const data = encoder.encode(JSON.stringify({ moves: payload }));
 
-  // Use a reliable Unidirectional Stream to bypass Datagram drops/bugs on mobile WebKit
-  transport
-    .createUnidirectionalStream()
-    .then((stream) => {
-      const writer = stream.getWriter();
-      writer
-        .write(data)
-        .then(() => {
-          writer.close().catch(console.error);
-        })
-        .catch((e) => {
-          console.error("Failed to write stream:", e);
-        });
-    })
-    .catch((e) => {
-      console.error("Failed to create stream:", e);
-    });
+  // Send over active protocol
+  if (isWebSocket && transport instanceof WebSocket) {
+    if (transport.readyState === WebSocket.OPEN) {
+      transport.send(data);
+    }
+  } else if (!isWebSocket && transport) {
+    // Use a reliable Unidirectional Stream to bypass Datagram drops/bugs on mobile WebKit
+    (transport as WebTransport)
+      .createUnidirectionalStream()
+      .then((stream) => {
+        const writer = stream.getWriter();
+        writer
+          .write(data)
+          .then(() => {
+            writer.close().catch(console.error);
+          })
+          .catch((e) => {
+            console.error("Failed to write stream:", e);
+          });
+      })
+      .catch((e) => {
+        console.error("Failed to create stream:", e);
+      });
+  }
 }

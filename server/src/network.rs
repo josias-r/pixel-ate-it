@@ -8,7 +8,7 @@ use wtransport::endpoint::Endpoint;
 use wtransport::tls::Identity;
 use wtransport::ServerConfig;
 
-pub async fn start_server(state: SharedState) -> anyhow::Result<()> {
+pub async fn start_webtransport_server(state: SharedState) -> anyhow::Result<()> {
     // Generate self-signed certificate for WebTransport
     // We use serverCertificateHashes in the frontend so this is fully secure in prod
     let identity = Identity::self_signed(["localhost", "127.0.0.1", "::1"]).unwrap();
