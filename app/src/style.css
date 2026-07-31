@@ -186,6 +186,78 @@ canvas {
   transform: translateY(-2px);
 }
 
+/* Leaderboard */
+#leaderboard {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(10, 10, 20, 0.7);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  width: 250px;
+  color: #fff;
+  font-family: "Courier New", Courier, monospace;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  pointer-events: none;
+}
+
+#leaderboard h2 {
+  margin: 0 0 10px 0;
+  font-size: 1.2rem;
+  color: #00e5ff;
+  text-shadow: 0 0 5px #00e5ff;
+  text-align: center;
+  letter-spacing: 2px;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+  padding-bottom: 5px;
+}
+
+#leaderboard ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#leaderboard li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+#leaderboard li:last-child {
+  margin-bottom: 0;
+}
+
+#leaderboard .rank {
+  color: rgba(255, 255, 255, 0.5);
+  width: 25px;
+}
+
+#leaderboard .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+#leaderboard .id {
+  flex-grow: 1;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#leaderboard .score {
+  font-weight: bold;
+  color: #39ff14;
+  text-shadow: 0 0 5px #39ff14;
+}
+
 .toast-message {
   position: fixed;
   bottom: 20px;

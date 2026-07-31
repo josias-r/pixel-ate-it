@@ -148,3 +148,52 @@ pub async fn broadcast_update_nearby(state: &SharedState, center_x: i32, center_
         }
     }
 }
+
+pub async fn broadcast_leaderboard(state: &SharedState) {
+    let st = state.lock().await;
+    
+    let mut entries: Vec<crate::models::LeaderboardEntry> = st.players.values().map(|p| crate::models::LeaderboardEntry {
+        id: p.id.clone(),
+        color: p.color.clone(),
+        score: p.score,
+    }).collect();
+    
+    // Sort descending by score
+    entries.sort_by(|a, b| b.score.cmp(&a.score));
+    entries.truncate(10);
+    
+    let msg = crate::models::LeaderboardUpdate {
+        msg_type: "leaderboard".to_string(),
+        top_players: entries,
+    };
+    
+    if let Ok(json_bytes) = serde_json::to_vec(&msg) {
+        for sender in st.clients.values() {
+            let _ = sender.send(json_bytes.clone());
+        }
+    }
+}
+
+pub async fn send_leaderboard_to_client(state: &SharedState, client_id: &str) {
+    let st = state.lock().await;
+    
+    if let Some(sender) = st.clients.get(client_id) {
+        let mut entries: Vec<crate::models::LeaderboardEntry> = st.players.values().map(|p| crate::models::LeaderboardEntry {
+            id: p.id.clone(),
+            color: p.color.clone(),
+            score: p.score,
+        }).collect();
+        
+        entries.sort_by(|a, b| b.score.cmp(&a.score));
+        entries.truncate(10);
+        
+        let msg = crate::models::LeaderboardUpdate {
+            msg_type: "leaderboard".to_string(),
+            top_players: entries,
+        };
+        
+        if let Ok(json_bytes) = serde_json::to_vec(&msg) {
+            let _ = sender.send(json_bytes);
+        }
+    }
+}

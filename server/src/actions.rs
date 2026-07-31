@@ -14,6 +14,7 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
     let old_x = player.x;
     let old_y = player.y;
     let mut any_moved = false;
+    let mut eaten_ids = Vec::new();
 
     for m in client_move.moves {
         if m.seq > player.last_seq {
@@ -47,7 +48,6 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
         }
 
         // Eat mechanics
-        let mut eaten_ids = Vec::new();
         if let Some(chunk_players) = state_lock.grid.get(&(new_chunk_x, new_chunk_y)) {
             for pid in chunk_players {
                 if pid != client_id {
@@ -60,10 +60,10 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
             }
         }
         
-        for pid in eaten_ids {
+        for pid in &eaten_ids {
             log::info!("Player {} was eaten by {}", pid, client_id);
             // Send 'eaten' message
-            if let Some(sender) = state_lock.clients.get(&pid) {
+            if let Some(sender) = state_lock.clients.get(pid) {
                 let msg = EatenMessage {
                     msg_type: "eaten".to_string(),
                     by_id: client_id.to_string(),
@@ -74,20 +74,33 @@ pub async fn handle_player_move(state: &SharedState, client_id: &str, client_mov
             }
             
             // Remove victim from game state (they become a ghost with no player entity)
-            if let Some(victim) = state_lock.players.remove(&pid) {
+            if let Some(victim) = state_lock.players.remove(pid) {
                 let v_chunk = crate::state::AppState::get_chunk(victim.x, victim.y);
                 if let Some(players) = state_lock.grid.get_mut(&v_chunk) {
-                    players.remove(&pid);
+                    players.remove(pid);
                     if players.is_empty() {
                         state_lock.grid.remove(&v_chunk);
                     }
                 }
             }
         }
+        
+        let did_eat = !eaten_ids.is_empty();
+        if did_eat {
+            player.score += eaten_ids.len() as u32;
+        }
     }
 
     // Put the player back
     state_lock.players.insert(client_id.to_string(), player);
+    
+    let did_eat = if any_moved { !eaten_ids.is_empty() } else { false };
+    
+    drop(state_lock);
+
+    if did_eat {
+        crate::state::broadcast_leaderboard(state).await;
+    }
 
     if any_moved {
         Some((old_x, old_y))

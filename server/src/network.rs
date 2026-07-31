@@ -110,10 +110,11 @@ async fn handle_session(connection: wtransport::Connection, state: SharedState, 
             client_id.clone(),
             PlayerState {
                 id: client_id.clone(),
-                x: spawn_x,
-                y: spawn_y,
+                x: spawn_pos.0,
+                y: spawn_pos.1,
                 color: my_color,
                 last_seq: 0,
+                score: 0,
             },
         );
         st.insert_to_grid(client_id.clone(), spawn_x, spawn_y);
@@ -125,6 +126,7 @@ async fn handle_session(connection: wtransport::Connection, state: SharedState, 
     broadcast_update_nearby(&state, spawn_pos.0, spawn_pos.1, None, "").await;
     // And send an update to the newly connected client
     send_update_to_client(&state, &client_id).await;
+    crate::state::send_leaderboard_to_client(&state, &client_id).await;
 
     let connection = Arc::new(connection);
     let connection_send = connection.clone();

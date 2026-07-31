@@ -3,10 +3,11 @@ import "./canvas";
 import { initInput } from "./input";
 import { update } from "./update";
 import { draw } from "./render";
-import { mountJoinScreen } from "./ui";
+import { mountJoinScreen, mountLeaderboard } from "./ui";
 
 initInput();
 mountJoinScreen();
+mountLeaderboard();
 
 let lastTime = 0;
 function loop(time: number) {

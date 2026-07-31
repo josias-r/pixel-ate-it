@@ -92,6 +92,7 @@ async fn handle_ws_session(
                 y: spawn_y,
                 color: my_color,
                 last_seq: 0,
+                score: 0,
             },
         );
         st.insert_to_grid(client_id.clone(), spawn_x, spawn_y);
@@ -101,6 +102,7 @@ async fn handle_ws_session(
     
     broadcast_update_nearby(&state, spawn_pos.0, spawn_pos.1, None, "").await;
     send_update_to_client(&state, &client_id).await;
+    crate::state::send_leaderboard_to_client(&state, &client_id).await;
 
     let mut send_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {

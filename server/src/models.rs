@@ -7,6 +7,7 @@ pub struct PlayerState {
     pub y: i32,
     pub color: String,
     pub last_seq: u32,
+    pub score: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -42,4 +43,18 @@ pub struct EatenMessage {
     #[serde(rename = "type")]
     pub msg_type: String, // "eaten"
     pub by_id: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct LeaderboardEntry {
+    pub id: String,
+    pub color: String,
+    pub score: u32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LeaderboardUpdate {
+    #[serde(rename = "type")]
+    pub msg_type: String, // "leaderboard"
+    pub top_players: Vec<LeaderboardEntry>,
 }

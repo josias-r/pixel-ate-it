@@ -1,7 +1,7 @@
 import { gameState } from "./state";
 import { updateOtherPixelTarget } from "./input";
 import { hexHash } from "./cert_hash";
-import { showToast } from "./ui";
+import { showToast, updateLeaderboardUI } from "./ui";
 
 export let transport: WebTransport | WebSocket | null = null;
 export let isWebSocket = false;
@@ -107,6 +107,9 @@ function connectWebSocket(colorHex: string) {
       const msg = JSON.parse(text);
       if (msg.type === "update") {
         handleUpdate(msg.ack, msg.others);
+      } else if (msg.type === "leaderboard") {
+        gameState.leaderboard = msg.top_players;
+        updateLeaderboardUI(msg.top_players);
       } else if (msg.type === "eaten") {
         gameState.isGameOver = true;
         import("./ui").then(({ showGameOverScreen }) => showGameOverScreen());
@@ -146,6 +149,9 @@ async function handleIncomingStream(stream: any) {
         const msg = JSON.parse(text);
         if (msg.type === "update") {
           handleUpdate(msg.ack, msg.others);
+        } else if (msg.type === "leaderboard") {
+          gameState.leaderboard = msg.top_players;
+          updateLeaderboardUI(msg.top_players);
         } else if (msg.type === "eaten") {
           gameState.isGameOver = true;
           import("./ui").then(({ showGameOverScreen }) => showGameOverScreen());
