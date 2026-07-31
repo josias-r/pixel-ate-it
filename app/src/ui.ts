@@ -49,7 +49,7 @@ export function mountJoinScreen() {
   };
 
   // Presets
-  shuffledPresets.forEach((color, index) => {
+  shuffledPresets.forEach((color) => {
     const btn = document.createElement("button");
     btn.className = "color-btn";
     btn.style.backgroundColor = color;
