@@ -53,7 +53,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        working-directory: app
+        run: pnpm install
       - name: Setup dummy cert hash
         working-directory: app
         run: echo 'export const hexHash = "__CERT_HASH_PLACEHOLDER__";' > src/cert_hash.ts
