@@ -2,7 +2,7 @@ use crate::models::{PlayerState, RelativePlayer, ServerUpdate};
 use std::{collections::{HashMap, HashSet}, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 
-pub const CHUNK_SIZE: i32 = 5;
+pub const CHUNK_SIZE: i32 = 9;
 
 pub type ClientSender = mpsc::UnboundedSender<Vec<u8>>;
 

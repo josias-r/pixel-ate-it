@@ -74,10 +74,11 @@ canvas {
 
 /* Color Picker Grid */
 .color-options {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
   margin-bottom: 3rem;
-  align-items: center;
+  place-items: center;
   background: rgba(255, 255, 255, 0.03);
   padding: 1.5rem 2.5rem;
   border-radius: 20px;
@@ -167,4 +168,36 @@ canvas {
   color: #000;
   box-shadow: 0 0 40px #00e5ff, inset 0 0 20px #00e5ff;
   transform: translateY(-2px);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  #join-screen h1,
+  #game-over h1 {
+    font-size: 2.5rem;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  
+  #join-screen p {
+    font-size: 1.2rem;
+  }
+  
+  .color-options {
+    gap: 1rem;
+    padding: 1rem;
+    max-width: 90vw;
+  }
+  
+  .color-btn,
+  .custom-color-wrapper {
+    width: 40px;
+    height: 40px;
+  }
+  
+  #join-btn,
+  #game-over button {
+    padding: 1rem 2.5rem;
+    font-size: 1.2rem;
+  }
 }
